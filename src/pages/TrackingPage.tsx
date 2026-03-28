@@ -43,8 +43,8 @@ const TrackingPage = () => {
             <span className="text-sm">Kembali</span>
           </Link>
           <div className="flex items-center gap-2 ml-auto">
-            <img src={logoIcon} alt="ServisKu" className="w-7 h-7" />
-            <span className="font-bold text-foreground">ServisKu</span>
+            <img src={logoIcon} alt="Duper Computer" className="w-7 h-7" />
+            <span className="font-bold text-foreground">Duper Computer</span>
           </div>
         </div>
       </nav>

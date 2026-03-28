@@ -46,7 +46,7 @@ const LoginPage = () => {
         <Card className="border-border shadow-elevated">
           <CardHeader className="text-center pb-4">
             <div className="flex justify-center mb-3">
-              <img src={logoIcon} alt="ServisKu" className="w-12 h-12" />
+              <img src={logoIcon} alt="Duper Computer" className="w-12 h-12" />
             </div>
             <CardTitle className="text-xl">Login Staff</CardTitle>
             <CardDescription>Masuk ke panel manajemen servis</CardDescription>
@@ -86,8 +86,8 @@ const LoginPage = () => {
             </form>
 
             <div className="mt-4 text-center">
-              <Link to="/register" className="text-sm text-accent hover:underline">
-                Daftar sebagai Teknisi
+            <Link to="/register" className="text-sm text-accent hover:underline">
+                Daftar Akun Baru
               </Link>
             </div>
           </CardContent>
