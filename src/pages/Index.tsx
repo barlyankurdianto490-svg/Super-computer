@@ -54,8 +54,8 @@ const Index = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logoIcon} alt="ServisKu" className="w-8 h-8" />
-            <span className="text-lg font-bold text-foreground">ServisKu</span>
+            <img src={logoIcon} alt="Duper Computer" className="w-8 h-8" />
+            <span className="text-lg font-bold text-foreground">Duper Computer</span>
           </div>
           <Button
             variant="outline"
@@ -192,10 +192,10 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Wrench className="w-5 h-5 text-accent" />
-            <span className="font-bold text-primary-foreground">ServisKu</span>
+            <span className="font-bold text-primary-foreground">Duper Computer</span>
           </div>
           <p className="text-sm text-primary-foreground/60">
-            © 2026 ServisKu. Sistem Manajemen Servis Terintegrasi.
+            © 2026 Duper Computer Apps. Sistem Manajemen Servis Terintegrasi.
           </p>
         </div>
       </footer>

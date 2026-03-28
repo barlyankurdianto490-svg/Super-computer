@@ -49,8 +49,8 @@ const DashboardLayout = () => {
         }`}
       >
         <div className="h-16 flex items-center gap-2 px-4 border-b border-sidebar-border">
-          <img src={logoIcon} alt="ServisKu" className="w-8 h-8" />
-          <span className="font-bold text-sidebar-foreground">ServisKu</span>
+          <img src={logoIcon} alt="Duper Computer" className="w-8 h-8" />
+          <span className="font-bold text-sidebar-foreground">Duper Computer</span>
           <Button variant="ghost" size="icon" className="ml-auto lg:hidden text-sidebar-foreground" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />
           </Button>
@@ -96,7 +96,7 @@ const DashboardLayout = () => {
           </Button>
           <div className="flex items-center gap-2 lg:hidden">
             <Wrench className="w-5 h-5 text-accent" />
-            <span className="font-bold text-foreground">ServisKu</span>
+            <span className="font-bold text-foreground">Duper Computer</span>
           </div>
         </header>
 
