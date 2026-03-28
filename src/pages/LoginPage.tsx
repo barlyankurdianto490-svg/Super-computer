@@ -86,8 +86,8 @@ const LoginPage = () => {
             </form>
 
             <div className="mt-4 text-center">
-              <Link to="/register" className="text-sm text-accent hover:underline">
-                Daftar sebagai Teknisi
+            <Link to="/register" className="text-sm text-accent hover:underline">
+                Daftar Akun Baru
               </Link>
             </div>
           </CardContent>
