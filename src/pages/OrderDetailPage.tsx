@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Phone, Copy, ExternalLink, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Phone, Copy, ExternalLink, FileText, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -61,19 +60,56 @@ const OrderDetailPage = () => {
     fetchOrder();
   }, [orderId]);
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    if (!order) return;
+  // Get the next status in the flow (skip cancelled)
+  const getNextStatus = () => {
+    if (!order) return null;
+    const mainFlow = statusFlow.filter(s => s.value !== "cancelled" && s.value !== "closed");
+    const currentIndex = mainFlow.findIndex(s => s.value === order.status);
+    if (currentIndex === -1 || currentIndex >= mainFlow.length - 1) return null;
+    return mainFlow[currentIndex + 1];
+  };
+
+  const handleNextStatus = async () => {
+    const next = getNextStatus();
+    if (!next || !order) return;
+    if (!updateDesc.trim()) {
+      toast({ title: "Keterangan wajib diisi", description: "Tuliskan keterangan sebelum lanjut ke tahap berikutnya.", variant: "destructive" });
+      return;
+    }
     setUpdating(true);
     try {
-      await supabase.from("service_orders").update({ status: newStatus, updated_at: new Date().toISOString() } as any).eq("id", order.id);
+      await supabase.from("service_orders").update({ status: next.value, updated_at: new Date().toISOString() } as any).eq("id", order.id);
       await supabase.from("service_updates").insert({
         order_id: order.id,
-        status: newStatus,
-        description: updateDesc || `Status diubah ke ${statusFlow.find(s => s.value === newStatus)?.label}`,
+        status: next.value,
+        description: updateDesc,
         updated_by: user?.id,
       });
       setUpdateDesc("");
-      toast({ title: "Status Diperbarui" });
+      toast({ title: "Status Diperbarui", description: `→ ${next.label}` });
+      fetchOrder();
+    } catch (e: any) {
+      toast({ title: "Gagal", description: e.message, variant: "destructive" });
+    }
+    setUpdating(false);
+  };
+
+  const handleCancel = async () => {
+    if (!order || !updateDesc.trim()) {
+      toast({ title: "Keterangan wajib diisi", variant: "destructive" });
+      return;
+    }
+    setUpdating(true);
+    try {
+      await supabase.from("service_orders").update({ status: "cancelled", updated_at: new Date().toISOString() } as any).eq("id", order.id);
+      await supabase.from("service_updates").insert({
+        order_id: order.id,
+        status: "cancelled",
+        description: updateDesc,
+        updated_by: user?.id,
+      });
+      setUpdateDesc("");
+      toast({ title: "Pesanan Dibatalkan" });
       fetchOrder();
     } catch (e: any) {
       toast({ title: "Gagal", description: e.message, variant: "destructive" });
@@ -120,6 +156,8 @@ const OrderDetailPage = () => {
   const isAdmin = userRole === "admin";
   const isTechnician = userRole === "technician";
   const canUpdate = isAdmin || isTechnician;
+  const nextStatus = getNextStatus();
+  const isFinal = ["closed", "cancelled"].includes(order.status);
 
   return (
     <div>
@@ -168,21 +206,45 @@ const OrderDetailPage = () => {
           </CardContent>
         </Card>
 
-        {/* Status Update */}
+        {/* Status Update & Timeline */}
         <div className="space-y-4">
-          {canUpdate && !["closed", "cancelled"].includes(order.status) && (
+          {canUpdate && !isFinal && (
             <Card className="border-border">
-              <CardHeader><CardTitle className="text-base">Update Status</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle className="text-base">Update Status</CardTitle>
+                {nextStatus && (
+                  <p className="text-xs text-muted-foreground">
+                    Tahap berikutnya: <span className="font-semibold text-foreground">{nextStatus.label}</span>
+                  </p>
+                )}
+              </CardHeader>
               <CardContent className="space-y-3">
-                <Select onValueChange={handleStatusUpdate} disabled={updating}>
-                  <SelectTrigger><SelectValue placeholder="Pilih status baru..." /></SelectTrigger>
-                  <SelectContent>
-                    {statusFlow.map(s => (
-                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Textarea placeholder="Keterangan update (opsional)..." value={updateDesc} onChange={e => setUpdateDesc(e.target.value)} className="text-sm" />
+                <Textarea
+                  placeholder="Tulis keterangan update (wajib)..."
+                  value={updateDesc}
+                  onChange={e => setUpdateDesc(e.target.value)}
+                  className="text-sm"
+                />
+                <div className="flex gap-2">
+                  {nextStatus && (
+                    <Button
+                      onClick={handleNextStatus}
+                      disabled={updating}
+                      className="flex-1"
+                    >
+                      {updating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
+                      Next → {nextStatus.label}
+                    </Button>
+                  )}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={updating}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}

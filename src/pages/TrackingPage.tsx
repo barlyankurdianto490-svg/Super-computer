@@ -52,6 +52,19 @@ const TrackingPage = () => {
   const isCancelled = order?.status === "cancelled";
   const currentStatusIndex = order ? (isCancelled ? -1 : statusOrder.indexOf(order.status as ServiceStatus)) : -1;
 
+  // Build a map of status -> update info (use the first update for each status)
+  const statusUpdateMap: Record<string, { description: string; date: string }> = {};
+  if (updates.length > 0) {
+    updates.forEach(u => {
+      if (!statusUpdateMap[u.status]) {
+        statusUpdateMap[u.status] = {
+          description: u.description || "",
+          date: new Date(u.created_at).toLocaleString("id-ID"),
+        };
+      }
+    });
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="bg-card border-b border-border">
@@ -85,31 +98,78 @@ const TrackingPage = () => {
             </Card>
           ) : (
             <>
-              {/* Status Timeline */}
+              {/* Status Timeline with descriptions */}
               <Card className="mb-6 border-border">
                 <CardHeader><CardTitle className="text-lg">Progres Perbaikan</CardTitle></CardHeader>
                 <CardContent>
                   {isCancelled ? (
-                    <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
-                      <XCircle className="w-6 h-6 text-red-500" />
-                      <p className="text-sm font-medium text-red-800">Pesanan ini telah dibatalkan</p>
+                    <div className="space-y-4">
+                      {/* Show completed steps before cancellation */}
+                      {updates.filter(u => u.status !== "cancelled").map((u, i) => {
+                        const st = statusConfig[u.status as ServiceStatus];
+                        return (
+                          <div key={u.id} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-100">
+                                {st && <st.icon className="w-4 h-4 text-green-600" />}
+                              </div>
+                              {i < updates.filter(u2 => u2.status !== "cancelled").length - 1 && <div className="w-0.5 flex-1 bg-green-200 my-1" />}
+                            </div>
+                            <div className="flex-1 pb-4">
+                              <p className="text-sm font-medium text-foreground">{st?.label || u.status}</p>
+                              <span className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString("id-ID")}</span>
+                              {u.description && <p className="text-sm text-muted-foreground mt-1">{u.description}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+                        <XCircle className="w-6 h-6 text-red-500" />
+                        <div>
+                          <p className="text-sm font-medium text-red-800">Pesanan Dibatalkan</p>
+                          {statusUpdateMap["cancelled"] && (
+                            <>
+                              <span className="text-xs text-red-600">{statusUpdateMap["cancelled"].date}</span>
+                              <p className="text-sm text-red-700 mt-1">{statusUpdateMap["cancelled"].description}</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-0">
                       {statusOrder.map((status, i) => {
                         const config = statusConfig[status];
                         const isActive = i <= currentStatusIndex;
                         const isCurrent = i === currentStatusIndex;
+                        const updateInfo = statusUpdateMap[status];
+                        const isLast = i === statusOrder.length - 1;
+
                         return (
-                          <div key={status} className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isCurrent ? config.color : isActive ? "bg-green-100" : "bg-muted"}`}>
-                              <config.icon className={`w-4 h-4 ${isCurrent ? "" : isActive ? "text-green-600" : "text-muted-foreground"}`} />
+                          <div key={status} className="flex gap-3">
+                            <div className="flex flex-col items-center">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isCurrent ? config.color : isActive ? "bg-green-100" : "bg-muted"}`}>
+                                <config.icon className={`w-4 h-4 ${isCurrent ? "" : isActive ? "text-green-600" : "text-muted-foreground"}`} />
+                              </div>
+                              {!isLast && (
+                                <div className={`w-0.5 flex-1 min-h-[16px] my-1 ${isActive && !isCurrent ? "bg-green-200" : "bg-border"}`} />
+                              )}
                             </div>
-                            <div className="flex-1">
-                              <p className={`text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>{config.label}</p>
+                            <div className={`flex-1 ${!isLast ? "pb-4" : ""}`}>
+                              <div className="flex items-center gap-2">
+                                <p className={`text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>{config.label}</p>
+                                {isCurrent && <Badge className={config.color + " text-xs"}>Saat Ini</Badge>}
+                                {isActive && !isCurrent && <CheckCircle2 className="w-4 h-4 text-green-600" />}
+                              </div>
+                              {isActive && updateInfo && (
+                                <div className="mt-1">
+                                  <span className="text-xs text-muted-foreground">{updateInfo.date}</span>
+                                  {updateInfo.description && (
+                                    <p className="text-sm text-muted-foreground mt-0.5">{updateInfo.description}</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            {isCurrent && <Badge className={config.color}>Saat Ini</Badge>}
-                            {isActive && !isCurrent && <CheckCircle2 className="w-4 h-4 text-green-600" />}
                           </div>
                         );
                       })}
@@ -129,32 +189,6 @@ const TrackingPage = () => {
                   {order.final_cost > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Total Biaya</span><span className="font-bold">Rp {order.final_cost.toLocaleString("id-ID")}</span></div>}
                 </CardContent>
               </Card>
-
-              {/* Updates */}
-              {updates.length > 0 && (
-                <Card className="border-border">
-                  <CardHeader><CardTitle className="text-lg">Riwayat Update</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {updates.map((u: any) => {
-                        const st = statusConfig[u.status as ServiceStatus];
-                        return (
-                          <div key={u.id} className="flex gap-3">
-                            <div className="w-2 h-2 rounded-full bg-accent mt-2 shrink-0" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-xs">{st?.label || u.status}</Badge>
-                                <span className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString("id-ID")}</span>
-                              </div>
-                              {u.description && <p className="text-sm text-muted-foreground mt-1">{u.description}</p>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
             </>
           )}
 
