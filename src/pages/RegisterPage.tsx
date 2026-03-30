@@ -33,14 +33,13 @@ const RegisterPage = () => {
         password,
         options: {
           data: { full_name: fullName, requested_role: selectedRole },
-          emailRedirectTo: window.location.origin,
         },
       });
       if (error) throw error;
 
       toast({
         title: "Pendaftaran Berhasil",
-        description: "Akun Anda menunggu persetujuan. Silakan cek email untuk verifikasi.",
+        description: "Akun Anda menunggu persetujuan Admin sebelum dapat digunakan.",
       });
       navigate("/login");
     } catch (error: any) {
@@ -72,7 +71,6 @@ const RegisterPage = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
-              {/* Role Selection */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Pilih Role</label>
                 <div className="grid grid-cols-2 gap-2">
@@ -84,15 +82,11 @@ const RegisterPage = () => {
                         type="button"
                         onClick={() => setSelectedRole(role.value)}
                         className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-center ${
-                          isSelected
-                            ? "border-accent bg-accent/10"
-                            : "border-border hover:border-muted-foreground/30"
+                          isSelected ? "border-accent bg-accent/10" : "border-border hover:border-muted-foreground/30"
                         }`}
                       >
                         <role.icon className={`w-5 h-5 ${isSelected ? "text-accent" : "text-muted-foreground"}`} />
-                        <span className={`text-sm font-semibold ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>
-                          {role.label}
-                        </span>
+                        <span className={`text-sm font-semibold ${isSelected ? "text-foreground" : "text-muted-foreground"}`}>{role.label}</span>
                         <span className="text-[10px] text-muted-foreground leading-tight">{role.description}</span>
                       </button>
                     );
@@ -110,7 +104,7 @@ const RegisterPage = () => {
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={6} />
+                <Input type="password" placeholder="Password (min 6 karakter)" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required minLength={6} />
               </div>
               <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}

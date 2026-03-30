@@ -14,16 +14,162 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_approved: boolean
+          requested_role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id: string
+          is_approved?: boolean
+          requested_role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_approved?: boolean
+          requested_role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_orders: {
+        Row: {
+          assigned_technician: string | null
+          created_at: string
+          created_by: string | null
+          customer_name: string
+          customer_phone: string
+          damage_description: string
+          device_brand: string | null
+          device_model: string | null
+          device_type: string
+          estimated_cost: number | null
+          final_cost: number | null
+          id: string
+          notes: string | null
+          status: string
+          ticket_number: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_technician?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_name: string
+          customer_phone: string
+          damage_description: string
+          device_brand?: string | null
+          device_model?: string | null
+          device_type: string
+          estimated_cost?: number | null
+          final_cost?: number | null
+          id?: string
+          notes?: string | null
+          status?: string
+          ticket_number: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_technician?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string
+          customer_phone?: string
+          damage_description?: string
+          device_brand?: string | null
+          device_model?: string | null
+          device_type?: string
+          estimated_cost?: number | null
+          final_cost?: number | null
+          id?: string
+          notes?: string | null
+          status?: string
+          ticket_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_updates: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_id: string
+          status: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id: string
+          status: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_id?: string
+          status?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_updates_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_approved: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "technician"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +296,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "technician"],
+    },
   },
 } as const
