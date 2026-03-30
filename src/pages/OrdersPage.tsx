@@ -236,6 +236,14 @@ const OrdersPage = () => {
               </div>
             </div>
             <div>
+              <label className="text-sm font-medium text-foreground">Tipe Servis *</label>
+              <select value={form.service_type} onChange={(e) => setForm({ ...form, service_type: e.target.value })} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <option value="personal">Service Pribadi</option>
+                <option value="warranty">Service Garansi</option>
+                <option value="install_upgrade">Install & Upgrade</option>
+              </select>
+            </div>
+            <div>
               <label className="text-sm font-medium text-foreground">Deskripsi Kerusakan *</label>
               <Textarea value={form.damage_description} onChange={(e) => setForm({ ...form, damage_description: e.target.value })} placeholder="Jelaskan keluhan/kerusakan unit..." required />
             </div>
