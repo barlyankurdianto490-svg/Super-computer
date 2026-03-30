@@ -37,10 +37,17 @@ const RegisterPage = () => {
       });
       if (error) throw error;
 
-      toast({
-        title: "Pendaftaran Berhasil",
-        description: "Akun Anda menunggu persetujuan Admin sebelum dapat digunakan.",
-      });
+      if (selectedRole === "admin") {
+        toast({
+          title: "Pendaftaran Admin Berhasil",
+          description: "Akun Admin Anda langsung aktif. Silakan login.",
+        });
+      } else {
+        toast({
+          title: "Pendaftaran Berhasil",
+          description: "Akun Teknisi Anda menunggu persetujuan Admin sebelum dapat digunakan.",
+        });
+      }
       navigate("/login");
     } catch (error: any) {
       toast({
@@ -67,7 +74,7 @@ const RegisterPage = () => {
               <img src={logoIcon} alt="Duper Computer" className="w-12 h-12" />
             </div>
             <CardTitle className="text-xl">Daftar Akun</CardTitle>
-            <CardDescription>Registrasi memerlukan persetujuan Admin</CardDescription>
+            <CardDescription>Admin langsung aktif • Teknisi perlu persetujuan</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
