@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ClipboardList, Plus, Loader2, Phone, Search, ExternalLink, Copy } from "lucide-react";
+import { ClipboardList, Plus, Loader2, Phone, Search, ExternalLink, Copy, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,15 +12,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
-  received: { label: "Diterima", color: "bg-blue-100 text-blue-800" },
+  received: { label: "Serahkan Unit", color: "bg-blue-100 text-blue-800" },
   diagnosed: { label: "Diagnosa", color: "bg-yellow-100 text-yellow-800" },
-  in_progress: { label: "Dikerjakan", color: "bg-orange-100 text-orange-800" },
-  waiting_parts: { label: "Tunggu Sparepart", color: "bg-purple-100 text-purple-800" },
+  waiting_confirmation: { label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800" },
+  pending: { label: "Pending", color: "bg-orange-100 text-orange-800" },
+  in_progress: { label: "Perbaikan", color: "bg-cyan-100 text-cyan-800" },
   completed: { label: "Selesai", color: "bg-green-100 text-green-800" },
-  picked_up: { label: "Diambil", color: "bg-muted text-muted-foreground" },
+  cancelled: { label: "Cancel", color: "bg-red-100 text-red-800" },
+  closed: { label: "Close", color: "bg-muted text-muted-foreground" },
+};
+
+const serviceTypeLabels: Record<string, string> = {
+  warranty: "Garansi",
+  personal: "Pribadi",
+  install_upgrade: "Install & Upgrade",
 };
 
 const OrdersPage = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -38,6 +48,7 @@ const OrdersPage = () => {
     damage_description: "",
     estimated_cost: "",
     notes: "",
+    service_type: "personal",
   });
 
   const fetchOrders = async () => {
@@ -78,7 +89,8 @@ const OrdersPage = () => {
         estimated_cost: form.estimated_cost ? parseFloat(form.estimated_cost) : 0,
         notes: form.notes || null,
         created_by: user?.id,
-        ticket_number: "", // trigger will generate
+        ticket_number: "",
+        service_type: form.service_type,
       } as any).select().single();
 
       if (error) throw error;
@@ -88,7 +100,7 @@ const OrdersPage = () => {
         description: `Tiket: ${(data as any).ticket_number}`,
       });
       setShowCreate(false);
-      setForm({ customer_name: "", customer_phone: "", device_type: "", device_brand: "", device_model: "", damage_description: "", estimated_cost: "", notes: "" });
+      setForm({ customer_name: "", customer_phone: "", device_type: "", device_brand: "", device_model: "", damage_description: "", estimated_cost: "", notes: "", service_type: "personal" });
       fetchOrders();
     } catch (error: any) {
       toast({ title: "Gagal Membuat Pesanan", description: error.message, variant: "destructive" });
@@ -162,6 +174,7 @@ const OrdersPage = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-foreground font-mono">{order.ticket_number}</span>
                         <Badge className={s.color}>{s.label}</Badge>
+                        <Badge variant="outline" className="text-xs">{serviceTypeLabels[order.service_type] || order.service_type}</Badge>
                       </div>
                       <p className="text-sm text-foreground font-medium">{order.customer_name}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -173,6 +186,9 @@ const OrdersPage = () => {
                       <p className="text-xs text-muted-foreground">{order.damage_description}</p>
                     </div>
                     <div className="flex sm:flex-col gap-2">
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/orders/${order.id}`)}>
+                        <Eye className="w-3 h-3 mr-1" /> Detail
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => copyTrackingLink(order.ticket_number)}>
                         <Copy className="w-3 h-3 mr-1" /> Link
                       </Button>
@@ -218,6 +234,14 @@ const OrdersPage = () => {
                 <label className="text-sm font-medium text-foreground">Model</label>
                 <Input value={form.device_model} onChange={(e) => setForm({ ...form, device_model: e.target.value })} placeholder="ROG, Ideapad..." />
               </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground">Tipe Servis *</label>
+              <select value={form.service_type} onChange={(e) => setForm({ ...form, service_type: e.target.value })} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <option value="personal">Service Pribadi</option>
+                <option value="warranty">Service Garansi</option>
+                <option value="install_upgrade">Install & Upgrade</option>
+              </select>
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Deskripsi Kerusakan *</label>

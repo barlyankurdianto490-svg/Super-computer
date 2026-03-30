@@ -59,6 +59,7 @@ export type Database = {
           final_cost: number | null
           id: string
           notes: string | null
+          service_type: string
           status: string
           ticket_number: string
           updated_at: string
@@ -77,6 +78,7 @@ export type Database = {
           final_cost?: number | null
           id?: string
           notes?: string | null
+          service_type?: string
           status?: string
           ticket_number: string
           updated_at?: string
@@ -95,6 +97,7 @@ export type Database = {
           final_cost?: number | null
           id?: string
           notes?: string | null
+          service_type?: string
           status?: string
           ticket_number?: string
           updated_at?: string

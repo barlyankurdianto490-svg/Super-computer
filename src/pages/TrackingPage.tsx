@@ -1,38 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, CheckCircle2, Wrench, Package, AlertCircle, Phone, Mail } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle2, Wrench, Package, AlertCircle, Phone, Mail, XCircle, PauseCircle, ShieldCheck, Settings } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import logoIcon from "@/assets/logo-icon.png";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-type ServiceStatus = "received" | "diagnosing" | "repairing" | "testing" | "completed" | "picked_up";
+type ServiceStatus = "received" | "diagnosed" | "waiting_confirmation" | "pending" | "in_progress" | "completed" | "cancelled" | "closed";
 
 const statusConfig: Record<ServiceStatus, { label: string; color: string; icon: typeof Clock }> = {
-  received: { label: "Diterima", color: "bg-info text-info-foreground", icon: Package },
-  diagnosing: { label: "Diagnosa", color: "bg-warning text-warning-foreground", icon: AlertCircle },
-  repairing: { label: "Perbaikan", color: "bg-accent text-accent-foreground", icon: Wrench },
-  testing: { label: "Pengujian", color: "bg-info text-info-foreground", icon: Clock },
-  completed: { label: "Selesai", color: "bg-success text-success-foreground", icon: CheckCircle2 },
-  picked_up: { label: "Diambil", color: "bg-muted text-muted-foreground", icon: CheckCircle2 },
+  received: { label: "Serahkan Unit", color: "bg-blue-100 text-blue-800", icon: Package },
+  diagnosed: { label: "Diagnosa", color: "bg-yellow-100 text-yellow-800", icon: AlertCircle },
+  waiting_confirmation: { label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800", icon: PauseCircle },
+  pending: { label: "Pending", color: "bg-orange-100 text-orange-800", icon: Clock },
+  in_progress: { label: "Perbaikan", color: "bg-cyan-100 text-cyan-800", icon: Wrench },
+  completed: { label: "Selesai", color: "bg-green-100 text-green-800", icon: CheckCircle2 },
+  cancelled: { label: "Cancel", color: "bg-red-100 text-red-800", icon: XCircle },
+  closed: { label: "Close", color: "bg-muted text-muted-foreground", icon: ShieldCheck },
 };
 
-const statusOrder: ServiceStatus[] = ["received", "diagnosing", "repairing", "testing", "completed", "picked_up"];
+const statusOrder: ServiceStatus[] = ["received", "diagnosed", "waiting_confirmation", "pending", "in_progress", "completed", "closed"];
+
+const serviceTypeLabels: Record<string, string> = {
+  warranty: "Service Garansi",
+  personal: "Service Pribadi",
+  install_upgrade: "Install & Upgrade",
+};
 
 const TrackingPage = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
-  const [notFound] = useState(true); // Will be replaced with real data
+  const [order, setOrder] = useState<any>(null);
+  const [updates, setUpdates] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Demo data - will be replaced with real Supabase query
-  const demoOrder = {
-    ticket_number: ticketId,
-    customer_name: "—",
-    device: "—",
-    status: "received" as ServiceStatus,
-    created_at: new Date().toISOString(),
-  };
+  useEffect(() => {
+    const fetchOrder = async () => {
+      const { data } = await supabase.from("service_orders").select("*").eq("ticket_number", ticketId || "").single();
+      if (data) {
+        setOrder(data);
+        const { data: upd } = await supabase.from("service_updates").select("*").eq("order_id", data.id).order("created_at", { ascending: true });
+        if (upd) setUpdates(upd);
+      }
+      setLoading(false);
+    };
+    fetchOrder();
+  }, [ticketId]);
 
-  const currentStatusIndex = statusOrder.indexOf(demoOrder.status);
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+  const isCancelled = order?.status === "cancelled";
+  const currentStatusIndex = order ? (isCancelled ? -1 : statusOrder.indexOf(order.status as ServiceStatus)) : -1;
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,7 +61,7 @@ const TrackingPage = () => {
             <span className="text-sm">Kembali</span>
           </Link>
           <div className="flex items-center gap-2 ml-auto">
-            <img src={logoIcon} alt="Duper Computer" className="w-7 h-7" />
+            <Settings className="w-5 h-5 text-accent" />
             <span className="font-bold text-foreground">Duper Computer</span>
           </div>
         </div>
@@ -56,90 +74,95 @@ const TrackingPage = () => {
             Tiket: <span className="font-mono font-semibold text-foreground">{ticketId}</span>
           </p>
 
-          {notFound ? (
+          {!order ? (
             <Card className="border-border">
               <CardContent className="py-12 text-center">
                 <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-semibold text-foreground mb-2">Tiket Tidak Ditemukan</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Nomor tiket "{ticketId}" belum terdaftar di sistem kami.
-                </p>
-                <Link to="/" className="text-sm text-accent hover:underline">
-                  Coba cari lagi
-                </Link>
+                <p className="text-sm text-muted-foreground mb-4">Nomor tiket "{ticketId}" belum terdaftar.</p>
+                <Link to="/" className="text-sm text-accent hover:underline">Coba cari lagi</Link>
               </CardContent>
             </Card>
           ) : (
             <>
               {/* Status Timeline */}
               <Card className="mb-6 border-border">
-                <CardHeader>
-                  <CardTitle className="text-lg">Progres Perbaikan</CardTitle>
-                </CardHeader>
+                <CardHeader><CardTitle className="text-lg">Progres Perbaikan</CardTitle></CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {statusOrder.map((status, i) => {
-                      const config = statusConfig[status];
-                      const isActive = i <= currentStatusIndex;
-                      const isCurrent = i === currentStatusIndex;
-                      return (
-                        <div key={status} className="flex items-center gap-3">
-                          <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
-                              isCurrent ? config.color : isActive ? "bg-success/20" : "bg-muted"
-                            }`}
-                          >
-                            <config.icon className={`w-4 h-4 ${isCurrent ? "" : isActive ? "text-success" : "text-muted-foreground"}`} />
+                  {isCancelled ? (
+                    <div className="flex items-center gap-3 p-3 bg-red-50 rounded-lg">
+                      <XCircle className="w-6 h-6 text-red-500" />
+                      <p className="text-sm font-medium text-red-800">Pesanan ini telah dibatalkan</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {statusOrder.map((status, i) => {
+                        const config = statusConfig[status];
+                        const isActive = i <= currentStatusIndex;
+                        const isCurrent = i === currentStatusIndex;
+                        return (
+                          <div key={status} className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isCurrent ? config.color : isActive ? "bg-green-100" : "bg-muted"}`}>
+                              <config.icon className={`w-4 h-4 ${isCurrent ? "" : isActive ? "text-green-600" : "text-muted-foreground"}`} />
+                            </div>
+                            <div className="flex-1">
+                              <p className={`text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>{config.label}</p>
+                            </div>
+                            {isCurrent && <Badge className={config.color}>Saat Ini</Badge>}
+                            {isActive && !isCurrent && <CheckCircle2 className="w-4 h-4 text-green-600" />}
                           </div>
-                          <div className="flex-1">
-                            <p className={`text-sm font-medium ${isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                              {config.label}
-                            </p>
-                          </div>
-                          {isCurrent && <Badge className={config.color}>Saat Ini</Badge>}
-                          {isActive && !isCurrent && <CheckCircle2 className="w-4 h-4 text-success" />}
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Device Info */}
-              <Card className="border-border">
-                <CardHeader>
-                  <CardTitle className="text-lg">Detail Unit</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Pelanggan</span>
-                    <span className="font-medium text-foreground">{demoOrder.customer_name}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Perangkat</span>
-                    <span className="font-medium text-foreground">{demoOrder.device}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Tanggal Masuk</span>
-                    <span className="font-medium text-foreground">
-                      {new Date(demoOrder.created_at).toLocaleDateString("id-ID")}
-                    </span>
-                  </div>
+              <Card className="mb-6 border-border">
+                <CardHeader><CardTitle className="text-lg">Detail Unit</CardTitle></CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Pelanggan</span><span className="font-medium">{order.customer_name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Perangkat</span><span className="font-medium">{order.device_type} {order.device_brand && `• ${order.device_brand}`} {order.device_model && `• ${order.device_model}`}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Tipe Servis</span><span className="font-medium">{serviceTypeLabels[order.service_type] || order.service_type}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Tanggal Masuk</span><span className="font-medium">{new Date(order.created_at).toLocaleDateString("id-ID")}</span></div>
+                  {order.final_cost > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Total Biaya</span><span className="font-bold">Rp {order.final_cost.toLocaleString("id-ID")}</span></div>}
                 </CardContent>
               </Card>
+
+              {/* Updates */}
+              {updates.length > 0 && (
+                <Card className="border-border">
+                  <CardHeader><CardTitle className="text-lg">Riwayat Update</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {updates.map((u: any) => {
+                        const st = statusConfig[u.status as ServiceStatus];
+                        return (
+                          <div key={u.id} className="flex gap-3">
+                            <div className="w-2 h-2 rounded-full bg-accent mt-2 shrink-0" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-xs">{st?.label || u.status}</Badge>
+                                <span className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString("id-ID")}</span>
+                              </div>
+                              {u.description && <p className="text-sm text-muted-foreground mt-1">{u.description}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
 
-          {/* Contact */}
           <div className="mt-8 text-center">
             <p className="text-sm text-muted-foreground mb-3">Butuh bantuan?</p>
             <div className="flex items-center justify-center gap-4">
-              <a href="tel:+62" className="flex items-center gap-1 text-sm text-accent hover:underline">
-                <Phone className="w-4 h-4" /> Telepon
-              </a>
-              <a href="mailto:" className="flex items-center gap-1 text-sm text-accent hover:underline">
-                <Mail className="w-4 h-4" /> Email
-              </a>
+              <a href="tel:+62" className="flex items-center gap-1 text-sm text-accent hover:underline"><Phone className="w-4 h-4" /> Telepon</a>
+              <a href="mailto:" className="flex items-center gap-1 text-sm text-accent hover:underline"><Mail className="w-4 h-4" /> Email</a>
             </div>
           </div>
         </motion.div>
