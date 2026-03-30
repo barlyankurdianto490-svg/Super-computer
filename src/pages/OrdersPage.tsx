@@ -89,7 +89,8 @@ const OrdersPage = () => {
         estimated_cost: form.estimated_cost ? parseFloat(form.estimated_cost) : 0,
         notes: form.notes || null,
         created_by: user?.id,
-        ticket_number: "", // trigger will generate
+        ticket_number: "",
+        service_type: form.service_type,
       } as any).select().single();
 
       if (error) throw error;
@@ -99,7 +100,7 @@ const OrdersPage = () => {
         description: `Tiket: ${(data as any).ticket_number}`,
       });
       setShowCreate(false);
-      setForm({ customer_name: "", customer_phone: "", device_type: "", device_brand: "", device_model: "", damage_description: "", estimated_cost: "", notes: "" });
+      setForm({ customer_name: "", customer_phone: "", device_type: "", device_brand: "", device_model: "", damage_description: "", estimated_cost: "", notes: "", service_type: "personal" });
       fetchOrders();
     } catch (error: any) {
       toast({ title: "Gagal Membuat Pesanan", description: error.message, variant: "destructive" });
@@ -173,6 +174,7 @@ const OrdersPage = () => {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-foreground font-mono">{order.ticket_number}</span>
                         <Badge className={s.color}>{s.label}</Badge>
+                        <Badge variant="outline" className="text-xs">{serviceTypeLabels[order.service_type] || order.service_type}</Badge>
                       </div>
                       <p className="text-sm text-foreground font-medium">{order.customer_name}</p>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -184,6 +186,9 @@ const OrdersPage = () => {
                       <p className="text-xs text-muted-foreground">{order.damage_description}</p>
                     </div>
                     <div className="flex sm:flex-col gap-2">
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/dashboard/orders/${order.id}`)}>
+                        <Eye className="w-3 h-3 mr-1" /> Detail
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => copyTrackingLink(order.ticket_number)}>
                         <Copy className="w-3 h-3 mr-1" /> Link
                       </Button>
