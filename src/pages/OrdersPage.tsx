@@ -29,6 +29,7 @@ const serviceTypeLabels: Record<string, string> = {
 };
 
 const OrdersPage = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -47,6 +48,7 @@ const OrdersPage = () => {
     damage_description: "",
     estimated_cost: "",
     notes: "",
+    service_type: "personal",
   });
 
   const fetchOrders = async () => {
