@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { ClipboardList, Plus, Loader2, Phone, Search, ExternalLink, Copy } from "lucide-react";
+import { ClipboardList, Plus, Loader2, Phone, Search, ExternalLink, Copy, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +12,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const statusLabels: Record<string, { label: string; color: string }> = {
-  received: { label: "Diterima", color: "bg-blue-100 text-blue-800" },
+  received: { label: "Serahkan Unit", color: "bg-blue-100 text-blue-800" },
   diagnosed: { label: "Diagnosa", color: "bg-yellow-100 text-yellow-800" },
-  in_progress: { label: "Dikerjakan", color: "bg-orange-100 text-orange-800" },
-  waiting_parts: { label: "Tunggu Sparepart", color: "bg-purple-100 text-purple-800" },
+  waiting_confirmation: { label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800" },
+  pending: { label: "Pending", color: "bg-orange-100 text-orange-800" },
+  in_progress: { label: "Perbaikan", color: "bg-cyan-100 text-cyan-800" },
   completed: { label: "Selesai", color: "bg-green-100 text-green-800" },
-  picked_up: { label: "Diambil", color: "bg-muted text-muted-foreground" },
+  cancelled: { label: "Cancel", color: "bg-red-100 text-red-800" },
+  closed: { label: "Close", color: "bg-muted text-muted-foreground" },
+};
+
+const serviceTypeLabels: Record<string, string> = {
+  warranty: "Garansi",
+  personal: "Pribadi",
+  install_upgrade: "Install & Upgrade",
 };
 
 const OrdersPage = () => {
