@@ -21,8 +21,26 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
+
+      // Check if user is approved
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("is_approved, requested_role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (!profile?.is_approved) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Akun Belum Disetujui",
+          description: "Akun Anda masih menunggu persetujuan dari Admin.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       navigate("/dashboard");
     } catch (error: any) {
       toast({
@@ -55,38 +73,19 @@ const LoginPage = () => {
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+                <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required />
               </div>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
-                  required
-                />
+                <Input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className="pl-10" required />
               </div>
-              <Button
-                type="submit"
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={loading}
-              >
+              <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90" disabled={loading}>
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Masuk
               </Button>
             </form>
-
             <div className="mt-4 text-center">
-            <Link to="/register" className="text-sm text-accent hover:underline">
+              <Link to="/register" className="text-sm text-accent hover:underline">
                 Daftar Akun Baru
               </Link>
             </div>
