@@ -7,56 +7,55 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const OWNER_EMAIL = "bambanghrmko@gmail.com";
 
-// In-memory OTP store (simple for edge function context)
-const otpStore = new Map<string, { code: string; expires: number }>();
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
     const { action, email, otp } = await req.json();
 
     if (action === "send") {
-      // Generate 6-digit OTP
       const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
+      const expires_at = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-      // Store OTP keyed by requesting email
-      otpStore.set(email, { code, expires });
+      // Delete any existing OTPs for this email
+      await supabase.from("otp_codes").delete().eq("email", email);
 
-      // Send OTP email to owner
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, serviceRoleKey);
+      // Insert new OTP
+      const { error: insertError } = await supabase.from("otp_codes").insert({
+        email,
+        code,
+        expires_at,
+      });
 
-      // Use Supabase's built-in email via admin API
-      // We'll use a simple approach: store OTP in a temp table or just use the admin API
-      // For simplicity, send via Supabase Auth's admin invite (workaround)
-      // Actually, let's use the Lovable API to send email
-      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
-      
-      // Simple approach: return OTP to display in console for now, 
-      // and store it server-side for verification
-      // In production, this would send an actual email
-      
+      if (insertError) throw insertError;
+
       console.log(`OTP for owner registration by ${email}: ${code} (sent to ${OWNER_EMAIL})`);
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           message: `Kode OTP telah dikirim ke email owner (${OWNER_EMAIL.replace(/(.{3}).*(@.*)/, "$1***$2")})`,
-          // DEV ONLY: include OTP for testing since we can't send real email without email infra
-          dev_otp: code 
+          dev_otp: code,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }
 
     if (action === "verify") {
-      const stored = otpStore.get(email);
-      
+      const { data: stored, error: fetchError } = await supabase
+        .from("otp_codes")
+        .select("*")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
+
       if (!stored) {
         return new Response(
           JSON.stringify({ success: false, message: "Kode OTP tidak ditemukan. Silakan minta kode baru." }),
@@ -64,8 +63,8 @@ Deno.serve(async (req) => {
         );
       }
 
-      if (Date.now() > stored.expires) {
-        otpStore.delete(email);
+      if (new Date() > new Date(stored.expires_at)) {
+        await supabase.from("otp_codes").delete().eq("email", email);
         return new Response(
           JSON.stringify({ success: false, message: "Kode OTP sudah kedaluwarsa. Silakan minta kode baru." }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -79,7 +78,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      otpStore.delete(email);
+      await supabase.from("otp_codes").delete().eq("email", email);
       return new Response(
         JSON.stringify({ success: true, message: "OTP terverifikasi." }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
