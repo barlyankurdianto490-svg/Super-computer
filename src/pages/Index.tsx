@@ -20,11 +20,10 @@ const Index = () => {
     const val = searchValue.trim();
     if (!val) return;
 
-    // If looks like ticket number (starts with DC- or contains letters), search by ticket
-    if (/^DC-/i.test(val) || /[a-zA-Z]/.test(val)) {
-      navigate(`/track/${val}`);
+    // New ticket format: A-XXX (single letter + dash + numbers)
+    if (/^[A-Za-z]-/i.test(val)) {
+      navigate(`/track/${val.toUpperCase()}`);
     } else {
-      // Search by phone
       setSearching(true);
       const { data } = await supabase
         .from("service_orders")
@@ -38,7 +37,7 @@ const Index = () => {
 
   const statusLabels: Record<string, string> = {
     received: "Diterima", diagnosed: "Diagnosa", waiting_confirmation: "Menunggu Konfirmasi",
-    pending: "Pending", in_progress: "Perbaikan", completed: "Selesai",
+    in_progress: "Perbaikan", completed: "Selesai", ready_for_pickup: "Siap diAmbil",
     cancelled: "Cancel", closed: "Close",
   };
 
@@ -61,8 +60,8 @@ const Index = () => {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src={logoIcon} alt="Duper Computer" className="w-8 h-8" />
-            <span className="text-lg font-bold text-foreground">Duper Computer</span>
+            <img src={logoIcon} alt="Super Computer" className="w-8 h-8" />
+            <span className="text-lg font-bold text-foreground">Super Computer</span>
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
             Login Staff
@@ -85,7 +84,7 @@ const Index = () => {
               Lacak Servis Unit<br /><span className="text-gradient">Anda Secara Real-Time</span>
             </h1>
             <p className="text-lg text-primary-foreground/70 mb-8 max-w-xl mx-auto">
-              Masukkan nomor tiket atau nomor telepon untuk melihat status perbaikan unit Anda.
+              Masukkan nomor tiket (contoh: M-001) atau nomor telepon untuk melihat status perbaikan unit Anda.
             </p>
 
             <div className="max-w-md mx-auto space-y-3">
@@ -93,7 +92,7 @@ const Index = () => {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
-                    placeholder="No. tiket (DC-...) atau no. telepon..."
+                    placeholder="No. tiket (M-001) atau no. telepon..."
                     value={searchValue}
                     onChange={(e) => { setSearchValue(e.target.value); setPhoneResults(null); }}
                     className="pl-10 h-12 bg-card/95 backdrop-blur border-0 text-card-foreground placeholder:text-muted-foreground"
@@ -161,11 +160,11 @@ const Index = () => {
             <p className="text-muted-foreground">Proses transparan dari awal hingga akhir.</p>
           </motion.div>
           <div className="grid md:grid-cols-4 gap-6">
-            {steps.map((step, i) => (
-              <motion.div key={step.number} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }} className="relative text-center">
-                <div className="text-5xl font-extrabold text-accent/20 mb-2">{step.number}</div>
-                <h3 className="text-lg font-semibold text-foreground mb-1">{step.title}</h3>
-                <p className="text-sm text-muted-foreground">{step.description}</p>
+            {steps.map((s, i) => (
+              <motion.div key={s.number} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.15 }} className="relative text-center">
+                <div className="text-5xl font-extrabold text-accent/20 mb-2">{s.number}</div>
+                <h3 className="text-lg font-semibold text-foreground mb-1">{s.title}</h3>
+                <p className="text-sm text-muted-foreground">{s.description}</p>
                 {i < steps.length - 1 && <ChevronRight className="hidden md:block absolute top-8 -right-3 w-6 h-6 text-accent/40" />}
               </motion.div>
             ))}
@@ -177,9 +176,9 @@ const Index = () => {
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Wrench className="w-5 h-5 text-accent" />
-            <span className="font-bold text-primary-foreground">Duper Computer</span>
+            <span className="font-bold text-primary-foreground">Super Computer</span>
           </div>
-          <p className="text-sm text-primary-foreground/60">© 2026 Duper Computer Apps. Sistem Manajemen Servis Terintegrasi.</p>
+          <p className="text-sm text-primary-foreground/60">© 2026 Super Computer Apps. Sistem Manajemen Servis Terintegrasi.</p>
         </div>
       </footer>
     </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Check, Upload, X, Loader2, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Upload, X, Loader2, Eye, EyeOff, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,15 +12,16 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-const SAVED_CUSTOMER_KEY = "duper_saved_customer";
+const SAVED_CUSTOMER_KEY = "super_saved_customers";
 
 const serviceTypes = [
   { value: "non_warranty", label: "Non Garansi", desc: "Servis berbayar tanpa garansi" },
   { value: "warranty_store", label: "Garansi Toko", desc: "Garansi dari toko kami" },
   { value: "warranty_partner", label: "Garansi Partner", desc: "Garansi dari partner resmi" },
+  { value: "install", label: "Install", desc: "Instalasi software/hardware" },
 ];
 
-const conditionOptions = ["Normal", "No Power", "Auto Shutdown", "Bluescreen", "Hang/Freeze", "Lainnya"];
+const conditionOptions = ["Normal", "No Power", "Auto Shutdown", "No Display", "Cant boot Windows", "Lainnya"];
 
 const checkItems = [
   { key: "speaker", label: "Speaker" },
@@ -33,7 +34,7 @@ const checkItems = [
 const photoLabels = [
   { key: "atas", label: "Atas" },
   { key: "bawah", label: "Bawah" },
-  { key: "depan", label: "Depan" },
+  { key: "depan", label: "Tampilan Terbuka" },
   { key: "belakang", label: "Belakang" },
 ];
 
@@ -51,7 +52,7 @@ interface FormData {
   unit_accessories: string;
   damage_description: string;
   unit_checks: Record<string, boolean>;
-  estimated_cost: string;
+  other_check_text: string;
   notes: string;
 }
 
@@ -62,6 +63,8 @@ const CreateOrderPage = () => {
   const [step, setStep] = useState(0);
   const [creating, setCreating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showSavedCustomers, setShowSavedCustomers] = useState(false);
+  const [savedCustomers, setSavedCustomers] = useState<any[]>([]);
   const [photos, setPhotos] = useState<Record<string, File | null>>({
     atas: null, bawah: null, depan: null, belakang: null,
   });
@@ -81,18 +84,14 @@ const CreateOrderPage = () => {
     unit_accessories: "",
     damage_description: "",
     unit_checks: { speaker: false, camera: false, touchpad: false, keyboard: false, wifi: false },
-    estimated_cost: "",
+    other_check_text: "",
     notes: "",
   });
 
-  // Load saved customer
   useEffect(() => {
     try {
       const saved = localStorage.getItem(SAVED_CUSTOMER_KEY);
-      if (saved) {
-        const data = JSON.parse(saved);
-        setForm(f => ({ ...f, customer_name: data.name || "", customer_phone: data.phone || "", customer_email: data.email || "", remember_customer: true }));
-      }
+      if (saved) setSavedCustomers(JSON.parse(saved));
     } catch {}
   }, []);
 
@@ -109,42 +108,65 @@ const CreateOrderPage = () => {
     }
   };
 
+  const allPhotosUploaded = photoLabels.every(p => photos[p.key] !== null);
+  const isLainnya = form.unit_condition === "Lainnya";
+
   const canNext = () => {
     switch (step) {
       case 0: return !!form.service_type;
       case 1: return !!form.customer_name.trim() && !!form.customer_phone.trim();
-      case 2: return !!form.device_brand.trim();
-      case 3: return !!form.damage_description.trim();
+      case 2: return !!form.device_type.trim() && !!form.device_brand.trim() && !!form.device_model.trim();
+      case 3: {
+        const hasPhotos = allPhotosUploaded;
+        const hasAccessories = !!form.unit_accessories.trim();
+        const hasDesc = isLainnya ? !!form.damage_description.trim() : true;
+        return hasPhotos && hasAccessories && hasDesc;
+      }
       case 4: return true;
       default: return false;
     }
   };
 
+  const handleSearchSaved = () => {
+    try {
+      const saved = localStorage.getItem(SAVED_CUSTOMER_KEY);
+      if (saved) setSavedCustomers(JSON.parse(saved));
+    } catch {}
+    setShowSavedCustomers(true);
+  };
+
+  const selectSavedCustomer = (c: any) => {
+    setForm(f => ({ ...f, customer_name: c.name || "", customer_phone: c.phone || "", customer_email: c.email || "", remember_customer: true }));
+    setShowSavedCustomers(false);
+  };
+
   const handleSubmit = async () => {
     setCreating(true);
     try {
-      // Save customer if checkbox
       if (form.remember_customer) {
-        localStorage.setItem(SAVED_CUSTOMER_KEY, JSON.stringify({ name: form.customer_name, phone: form.customer_phone, email: form.customer_email }));
-      } else {
-        localStorage.removeItem(SAVED_CUSTOMER_KEY);
+        const existing = savedCustomers.filter(c => c.phone !== form.customer_phone);
+        const updated = [{ name: form.customer_name, phone: form.customer_phone, email: form.customer_email }, ...existing].slice(0, 20);
+        localStorage.setItem(SAVED_CUSTOMER_KEY, JSON.stringify(updated));
       }
 
-      // Insert order
+      const unitChecks: Record<string, boolean> = { ...form.unit_checks };
+      if (form.other_check_text.trim()) {
+        unitChecks[form.other_check_text.trim()] = true;
+      }
+
       const { data: order, error } = await supabase.from("service_orders").insert({
         customer_name: form.customer_name,
         customer_phone: form.customer_phone,
         customer_email: form.customer_email || null,
-        device_type: form.device_type || form.device_brand,
+        device_type: form.device_type,
         device_brand: form.device_brand,
-        device_model: form.device_model || null,
+        device_model: form.device_model,
         device_password: form.device_password || null,
-        damage_description: form.damage_description,
+        damage_description: form.damage_description || "Sesuai kondisi unit",
         unit_condition: form.unit_condition,
-        unit_accessories: form.unit_accessories || null,
-        unit_checks: form.unit_checks,
+        unit_accessories: form.unit_accessories,
+        unit_checks: unitChecks,
         service_type: form.service_type,
-        estimated_cost: form.estimated_cost ? parseFloat(form.estimated_cost) : 0,
         notes: form.notes || null,
         created_by: user?.id,
         ticket_number: "",
@@ -152,7 +174,6 @@ const CreateOrderPage = () => {
 
       if (error) throw error;
 
-      // Upload photos
       const orderData = order as any;
       const photoEntries = Object.entries(photos).filter(([, f]) => f !== null);
       for (const [label, file] of photoEntries) {
@@ -162,15 +183,10 @@ const CreateOrderPage = () => {
         const { error: upErr } = await supabase.storage.from("unit-photos").upload(path, file);
         if (!upErr) {
           const { data: urlData } = supabase.storage.from("unit-photos").getPublicUrl(path);
-          await supabase.from("service_photos").insert({
-            order_id: orderData.id,
-            photo_url: urlData.publicUrl,
-            label,
-          });
+          await supabase.from("service_photos").insert({ order_id: orderData.id, photo_url: urlData.publicUrl, label });
         }
       }
 
-      // Create initial service_update
       await supabase.from("service_updates").insert({
         order_id: orderData.id,
         status: "received",
@@ -242,14 +258,37 @@ const CreateOrderPage = () => {
       {/* Step 1: Customer Contact */}
       {step === 1 && (
         <div className="space-y-4 max-w-lg">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              checked={form.remember_customer}
-              onCheckedChange={(c) => updateForm("remember_customer", !!c)}
-              id="remember"
-            />
-            <label htmlFor="remember" className="text-sm text-foreground cursor-pointer">Ingat data pelanggan</label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox checked={form.remember_customer} onCheckedChange={(c) => updateForm("remember_customer", !!c)} id="remember" />
+              <label htmlFor="remember" className="text-sm text-foreground cursor-pointer">Ingat data pelanggan</label>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleSearchSaved}>
+              <Search className="w-3 h-3 mr-1" /> Cari Tersimpan
+            </Button>
           </div>
+
+          {showSavedCustomers && (
+            <Card className="border-border">
+              <CardContent className="p-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Pelanggan Tersimpan:</p>
+                {savedCustomers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Belum ada data tersimpan.</p>
+                ) : (
+                  savedCustomers.map((c, i) => (
+                    <div key={i} className="flex justify-between items-center p-2 rounded hover:bg-muted/50 cursor-pointer" onClick={() => selectSavedCustomer(c)}>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">{c.phone}</p>
+                      </div>
+                      <Button variant="ghost" size="sm">Pilih</Button>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           <div>
             <label className="text-sm font-medium text-foreground">Nama Pelanggan *</label>
             <Input value={form.customer_name} onChange={e => updateForm("customer_name", e.target.value)} placeholder="Nama lengkap" />
@@ -269,7 +308,7 @@ const CreateOrderPage = () => {
       {step === 2 && (
         <div className="space-y-4 max-w-lg">
           <div>
-            <label className="text-sm font-medium text-foreground">Jenis Perangkat</label>
+            <label className="text-sm font-medium text-foreground">Jenis Perangkat *</label>
             <Input value={form.device_type} onChange={e => updateForm("device_type", e.target.value)} placeholder="Laptop / PC / HP" />
           </div>
           <div>
@@ -277,7 +316,7 @@ const CreateOrderPage = () => {
             <Input value={form.device_brand} onChange={e => updateForm("device_brand", e.target.value)} placeholder="Asus, Lenovo, HP..." />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Tipe / Model <span className="text-muted-foreground">(opsional)</span></label>
+            <label className="text-sm font-medium text-foreground">Tipe / Model *</label>
             <Input value={form.device_model} onChange={e => updateForm("device_model", e.target.value)} placeholder="ROG Strix, Ideapad..." />
           </div>
           <div>
@@ -301,7 +340,7 @@ const CreateOrderPage = () => {
       {step === 3 && (
         <div className="space-y-4 max-w-lg">
           <div>
-            <label className="text-sm font-medium text-foreground">Kondisi Unit</label>
+            <label className="text-sm font-medium text-foreground">Kondisi Unit *</label>
             <select
               value={form.unit_condition}
               onChange={e => updateForm("unit_condition", e.target.value)}
@@ -312,15 +351,17 @@ const CreateOrderPage = () => {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Deskripsi Kerusakan *</label>
-            <Textarea value={form.damage_description} onChange={e => updateForm("damage_description", e.target.value)} placeholder="Jelaskan keluhan / kerusakan unit..." />
+            <label className="text-sm font-medium text-foreground">
+              Deskripsi Keluhan {isLainnya ? "*" : <span className="text-muted-foreground">(opsional)</span>}
+            </label>
+            <Textarea value={form.damage_description} onChange={e => updateForm("damage_description", e.target.value)} placeholder="Jelaskan keluhan customer atau kondisi unit..." />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Foto Unit</label>
+            <label className="text-sm font-medium text-foreground">Foto Unit * (semua sisi wajib)</label>
             <div className="grid grid-cols-2 gap-3 mt-1">
               {photoLabels.map(p => (
-                <div key={p.key} className="border border-border rounded-lg p-2 text-center">
+                <div key={p.key} className={`border rounded-lg p-2 text-center ${photos[p.key] ? "border-green-300" : "border-border"}`}>
                   <p className="text-xs font-medium text-muted-foreground mb-1">{p.label}</p>
                   {photoPreview[p.key] ? (
                     <div className="relative">
@@ -342,12 +383,12 @@ const CreateOrderPage = () => {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground">Kelengkapan Unit</label>
+            <label className="text-sm font-medium text-foreground">Kelengkapan Unit *</label>
             <Input value={form.unit_accessories} onChange={e => updateForm("unit_accessories", e.target.value)} placeholder="Charger, tas, mouse..." />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">Cek Unit (centang jika berfungsi)</label>
+            <label className="text-sm font-medium text-foreground mb-2 block">Cek Unit (centang jika berfungsi) {isLainnya && "*"}</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {checkItems.map(c => (
                 <label key={c.key} className="flex items-center gap-2 p-2 rounded border border-border cursor-pointer hover:bg-muted/50">
@@ -355,18 +396,27 @@ const CreateOrderPage = () => {
                   <span className="text-sm">{c.label}</span>
                 </label>
               ))}
+              <div className="col-span-2 sm:col-span-3">
+                <label className="flex items-center gap-2 p-2 rounded border border-border cursor-pointer hover:bg-muted/50">
+                  <Checkbox
+                    checked={!!form.other_check_text}
+                    onCheckedChange={(c) => { if (!c) updateForm("other_check_text", ""); }}
+                  />
+                  <span className="text-sm">Other:</span>
+                  <Input
+                    value={form.other_check_text}
+                    onChange={e => updateForm("other_check_text", e.target.value)}
+                    placeholder="Ketik komponen lain..."
+                    className="h-7 text-sm flex-1"
+                  />
+                </label>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium text-foreground">Estimasi Biaya (Rp)</label>
-              <Input type="number" value={form.estimated_cost} onChange={e => updateForm("estimated_cost", e.target.value)} placeholder="0" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-foreground">Catatan</label>
-              <Input value={form.notes} onChange={e => updateForm("notes", e.target.value)} placeholder="Catatan tambahan" />
-            </div>
+          <div>
+            <label className="text-sm font-medium text-foreground">Catatan Tambahan <span className="text-muted-foreground">(opsional)</span></label>
+            <Textarea value={form.notes} onChange={e => updateForm("notes", e.target.value)} placeholder="Catatan tambahan..." />
           </div>
         </div>
       )}
@@ -383,23 +433,28 @@ const CreateOrderPage = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">No. HP</span><span className="font-medium">{form.customer_phone}</span></div>
               {form.customer_email && <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span className="font-medium">{form.customer_email}</span></div>}
               <Separator />
-              {form.device_type && <div className="flex justify-between"><span className="text-muted-foreground">Jenis</span><span className="font-medium">{form.device_type}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Jenis</span><span className="font-medium">{form.device_type}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Merk</span><span className="font-medium">{form.device_brand}</span></div>
-              {form.device_model && <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="font-medium">{form.device_model}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="font-medium">{form.device_model}</span></div>
               {form.device_password && <div className="flex justify-between"><span className="text-muted-foreground">Password</span><span className="font-medium">••••••</span></div>}
               <Separator />
               <div className="flex justify-between"><span className="text-muted-foreground">Kondisi</span><span className="font-medium">{form.unit_condition}</span></div>
-              <div><span className="text-muted-foreground">Kerusakan:</span><p className="mt-1 text-foreground">{form.damage_description}</p></div>
-              {form.unit_accessories && <div className="flex justify-between"><span className="text-muted-foreground">Kelengkapan</span><span className="font-medium">{form.unit_accessories}</span></div>}
+              {form.damage_description && <div><span className="text-muted-foreground">Keluhan:</span><p className="mt-1 text-foreground">{form.damage_description}</p></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Kelengkapan</span><span className="font-medium">{form.unit_accessories}</span></div>
 
               <div>
                 <span className="text-muted-foreground text-xs">Cek Unit:</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {checkItems.map(c => (
-                    <Badge key={c.key} variant={form.unit_checks[c.key] ? "default" : "outline"} className={`text-xs ${form.unit_checks[c.key] ? "bg-green-100 text-green-800" : "bg-red-50 text-red-600"}`}>
+                    <Badge key={c.key} variant="outline" className={`text-xs ${form.unit_checks[c.key] ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
                       {c.label}: {form.unit_checks[c.key] ? "OK" : "NG"}
                     </Badge>
                   ))}
+                  {form.other_check_text && (
+                    <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                      {form.other_check_text}: OK
+                    </Badge>
+                  )}
                 </div>
               </div>
 
@@ -418,9 +473,6 @@ const CreateOrderPage = () => {
                 </>
               )}
 
-              {form.estimated_cost && (
-                <div className="flex justify-between"><span className="text-muted-foreground">Est. Biaya</span><span className="font-medium">Rp {parseFloat(form.estimated_cost || "0").toLocaleString("id-ID")}</span></div>
-              )}
               {form.notes && <div className="flex justify-between"><span className="text-muted-foreground">Catatan</span><span className="font-medium">{form.notes}</span></div>}
             </CardContent>
           </Card>

@@ -13,9 +13,9 @@ const statusLabels: Record<string, { label: string; color: string }> = {
   received: { label: "Diterima", color: "bg-blue-100 text-blue-800" },
   diagnosed: { label: "Diagnosa", color: "bg-yellow-100 text-yellow-800" },
   waiting_confirmation: { label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800" },
-  pending: { label: "Pending", color: "bg-orange-100 text-orange-800" },
   in_progress: { label: "Perbaikan", color: "bg-cyan-100 text-cyan-800" },
   completed: { label: "Selesai", color: "bg-green-100 text-green-800" },
+  ready_for_pickup: { label: "Siap diAmbil", color: "bg-emerald-100 text-emerald-800" },
   cancelled: { label: "Cancel", color: "bg-red-100 text-red-800" },
   closed: { label: "Close", color: "bg-muted text-muted-foreground" },
 };
@@ -24,6 +24,7 @@ const serviceTypeLabels: Record<string, string> = {
   non_warranty: "Non Garansi",
   warranty_store: "Garansi Toko",
   warranty_partner: "Garansi Partner",
+  install: "Install",
 };
 
 const OrdersPage = () => {
@@ -61,7 +62,7 @@ const OrdersPage = () => {
 
   const sendWhatsApp = (phone: string, ticketNumber: string) => {
     const link = `${window.location.origin}/track/${ticketNumber}`;
-    const msg = encodeURIComponent(`Halo, pesanan servis Anda telah dibuat.\n\nNomor Tiket: ${ticketNumber}\nLacak di: ${link}\n\n- Duper Computer`);
+    const msg = encodeURIComponent(`Halo, pesanan servis Anda telah dibuat.\n\nNomor Tiket: ${ticketNumber}\nLacak di: ${link}\n\n- Super Computer`);
     const cleanPhone = phone.replace(/[^0-9]/g, "").replace(/^0/, "62");
     window.open(`https://wa.me/${cleanPhone}?text=${msg}`, "_blank");
   };
@@ -71,7 +72,7 @@ const OrdersPage = () => {
     return !q || o.ticket_number?.toLowerCase().includes(q) || o.customer_name?.toLowerCase().includes(q) || o.customer_phone?.includes(q);
   });
 
-  const isAdmin = userRole === "admin";
+  const isAdmin = userRole === "admin" || userRole === "owner";
 
   return (
     <div>
