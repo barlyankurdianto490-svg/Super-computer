@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { Search, Shield, Clock, Bell, ChevronRight, Wrench, FileCheck, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import heroBg from "@/assets/hero-bg.jpg";
@@ -12,24 +11,25 @@ import logoIcon from "@/assets/logo-icon.png";
 
 const Index = () => {
   const [searchValue, setSearchValue] = useState("");
-  const [searchMode, setSearchMode] = useState<"ticket" | "phone">("ticket");
   const [phoneResults, setPhoneResults] = useState<any[] | null>(null);
   const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
 
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchValue.trim()) return;
+    const val = searchValue.trim();
+    if (!val) return;
 
-    if (searchMode === "ticket") {
-      navigate(`/track/${searchValue.trim()}`);
+    // If looks like ticket number (starts with DC- or contains letters), search by ticket
+    if (/^DC-/i.test(val) || /[a-zA-Z]/.test(val)) {
+      navigate(`/track/${val}`);
     } else {
       // Search by phone
       setSearching(true);
       const { data } = await supabase
         .from("service_orders")
         .select("ticket_number, customer_name, device_type, status, created_at")
-        .eq("customer_phone", searchValue.trim())
+        .eq("customer_phone", val)
         .order("created_at", { ascending: false });
       setPhoneResults(data || []);
       setSearching(false);
@@ -37,12 +37,9 @@ const Index = () => {
   };
 
   const statusLabels: Record<string, string> = {
-    received: "Diterima",
-    diagnosed: "Diagnosa",
-    in_progress: "Dikerjakan",
-    waiting_parts: "Tunggu Sparepart",
-    completed: "Selesai",
-    picked_up: "Diambil",
+    received: "Diterima", diagnosed: "Diagnosa", waiting_confirmation: "Menunggu Konfirmasi",
+    pending: "Pending", in_progress: "Perbaikan", completed: "Selesai",
+    cancelled: "Cancel", closed: "Close",
   };
 
   const features = [
@@ -61,7 +58,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -74,48 +70,30 @@ const Index = () => {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <section className="relative min-h-[85vh] flex items-center justify-center overflow-hidden pt-16">
         <div className="absolute inset-0">
           <img src={heroBg} alt="" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-primary/60" />
         </div>
-
         <div className="relative z-10 container mx-auto px-4 text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="max-w-2xl mx-auto">
             <div className="inline-flex items-center gap-2 rounded-full bg-accent/20 px-4 py-1.5 mb-6">
-              <Phone className="w-4 h-4 text-accent" />
-              <span className="text-sm font-medium text-accent">Lacak via Tiket atau No. Telepon</span>
+              <Search className="w-4 h-4 text-accent" />
+              <span className="text-sm font-medium text-accent">Lacak via No. Tiket atau No. Telepon</span>
             </div>
-
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-primary-foreground mb-4 leading-tight">
-              Lacak Servis Unit
-              <br />
-              <span className="text-gradient">Anda Secara Real-Time</span>
+              Lacak Servis Unit<br /><span className="text-gradient">Anda Secara Real-Time</span>
             </h1>
-
             <p className="text-lg text-primary-foreground/70 mb-8 max-w-xl mx-auto">
-              Masukkan nomor tiket atau nomor telepon untuk melihat status perbaikan unit Anda. Tanpa login, tanpa ribet.
+              Masukkan nomor tiket atau nomor telepon untuk melihat status perbaikan unit Anda.
             </p>
 
-            {/* Search Tabs */}
             <div className="max-w-md mx-auto space-y-3">
-              <Tabs value={searchMode} onValueChange={(v) => { setSearchMode(v as any); setPhoneResults(null); }}>
-                <TabsList className="bg-card/30 backdrop-blur">
-                  <TabsTrigger value="ticket" className="text-primary-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">No. Tiket</TabsTrigger>
-                  <TabsTrigger value="phone" className="text-primary-foreground data-[state=active]:bg-accent data-[state=active]:text-accent-foreground">No. Telepon</TabsTrigger>
-                </TabsList>
-              </Tabs>
-
               <form onSubmit={handleTrack} className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
-                  {searchMode === "ticket" ? (
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  ) : (
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  )}
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
-                    placeholder={searchMode === "ticket" ? "Masukkan nomor tiket (DC-...)" : "Masukkan nomor telepon..."}
+                    placeholder="No. tiket (DC-...) atau no. telepon..."
                     value={searchValue}
                     onChange={(e) => { setSearchValue(e.target.value); setPhoneResults(null); }}
                     className="pl-10 h-12 bg-card/95 backdrop-blur border-0 text-card-foreground placeholder:text-muted-foreground"
@@ -127,22 +105,17 @@ const Index = () => {
                 </Button>
               </form>
 
-              {/* Phone search results */}
               {phoneResults !== null && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 space-y-2">
                   {phoneResults.length === 0 ? (
                     <Card className="bg-card/95 backdrop-blur">
                       <CardContent className="p-4 text-center text-muted-foreground text-sm">
-                        Tidak ditemukan pesanan dengan nomor telepon tersebut.
+                        Tidak ditemukan pesanan dengan nomor tersebut.
                       </CardContent>
                     </Card>
                   ) : (
                     phoneResults.map((o: any) => (
-                      <Card
-                        key={o.ticket_number}
-                        className="bg-card/95 backdrop-blur cursor-pointer hover:bg-card transition-colors"
-                        onClick={() => navigate(`/track/${o.ticket_number}`)}
-                      >
+                      <Card key={o.ticket_number} className="bg-card/95 backdrop-blur cursor-pointer hover:bg-card transition-colors" onClick={() => navigate(`/track/${o.ticket_number}`)}>
                         <CardContent className="p-4 flex justify-between items-center">
                           <div className="text-left">
                             <p className="font-mono font-bold text-foreground text-sm">{o.ticket_number}</p>
@@ -160,7 +133,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Features */}
       <section className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
@@ -182,7 +154,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* How it works */}
       <section className="py-20 bg-muted/50">
         <div className="container mx-auto px-4">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
@@ -202,7 +173,6 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="bg-primary py-8">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">

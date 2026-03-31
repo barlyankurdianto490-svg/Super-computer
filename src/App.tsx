@@ -13,6 +13,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import DashboardHome from "./pages/DashboardHome";
 import OrdersPage from "./pages/OrdersPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import CreateOrderPage from "./pages/CreateOrderPage";
 import TechniciansPage from "./pages/TechniciansPage";
 
 const queryClient = new QueryClient();
