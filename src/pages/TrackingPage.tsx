@@ -1,32 +1,33 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, CheckCircle2, Wrench, Package, AlertCircle, Phone, Mail, XCircle, PauseCircle, ShieldCheck, Camera } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle2, Wrench, Package, AlertCircle, Phone, Mail, XCircle, PauseCircle, ShieldCheck, Camera, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logoIcon from "@/assets/logo-icon.png";
 
-type ServiceStatus = "received" | "diagnosed" | "waiting_confirmation" | "pending" | "in_progress" | "completed" | "cancelled" | "closed";
+type ServiceStatus = "received" | "diagnosed" | "waiting_confirmation" | "in_progress" | "completed" | "ready_for_pickup" | "cancelled" | "closed";
 
 const statusConfig: Record<ServiceStatus, { label: string; color: string; icon: typeof Clock }> = {
   received: { label: "Diterima", color: "bg-blue-100 text-blue-800", icon: Package },
   diagnosed: { label: "Diagnosa", color: "bg-yellow-100 text-yellow-800", icon: AlertCircle },
   waiting_confirmation: { label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800", icon: PauseCircle },
-  pending: { label: "Pending", color: "bg-orange-100 text-orange-800", icon: Clock },
   in_progress: { label: "Perbaikan", color: "bg-cyan-100 text-cyan-800", icon: Wrench },
   completed: { label: "Selesai", color: "bg-green-100 text-green-800", icon: CheckCircle2 },
+  ready_for_pickup: { label: "Siap diAmbil", color: "bg-emerald-100 text-emerald-800", icon: Truck },
   cancelled: { label: "Cancel", color: "bg-red-100 text-red-800", icon: XCircle },
   closed: { label: "Close", color: "bg-muted text-muted-foreground", icon: ShieldCheck },
 };
 
-const statusOrder: ServiceStatus[] = ["received", "diagnosed", "waiting_confirmation", "pending", "in_progress", "completed", "closed"];
+const statusOrder: ServiceStatus[] = ["received", "diagnosed", "waiting_confirmation", "in_progress", "completed", "ready_for_pickup", "closed"];
 
 const serviceTypeLabels: Record<string, string> = {
   non_warranty: "Non Garansi",
   warranty_store: "Garansi Toko",
   warranty_partner: "Garansi Partner",
+  install: "Install",
 };
 
 const TrackingPage = () => {
@@ -56,10 +57,10 @@ const TrackingPage = () => {
   const isCancelled = order?.status === "cancelled";
   const currentStatusIndex = order ? (isCancelled ? -1 : statusOrder.indexOf(order.status as ServiceStatus)) : -1;
 
-  const statusUpdateMap: Record<string, { description: string; date: string }> = {};
+  const statusUpdateMap: Record<string, { description: string; date: string; cancel_type?: string }> = {};
   updates.forEach(u => {
     if (!statusUpdateMap[u.status]) {
-      statusUpdateMap[u.status] = { description: u.description || "", date: new Date(u.created_at).toLocaleString("id-ID") };
+      statusUpdateMap[u.status] = { description: u.description || "", date: new Date(u.created_at).toLocaleString("id-ID"), cancel_type: u.cancel_type };
     }
   });
 
@@ -74,8 +75,8 @@ const TrackingPage = () => {
             <span className="text-sm">Kembali</span>
           </Link>
           <div className="flex items-center gap-2 ml-auto">
-            <img src={logoIcon} alt="Duper Computer" className="w-6 h-6" />
-            <span className="font-bold text-foreground">Duper Computer</span>
+            <img src={logoIcon} alt="Super Computer" className="w-6 h-6" />
+            <span className="font-bold text-foreground">Super Computer</span>
           </div>
         </div>
       </nav>
@@ -125,7 +126,10 @@ const TrackingPage = () => {
                           <p className="text-sm font-medium text-red-800">Pesanan Dibatalkan</p>
                           {statusUpdateMap["cancelled"] && (
                             <>
-                              <span className="text-xs text-red-600">{statusUpdateMap["cancelled"].date}</span>
+                              {statusUpdateMap["cancelled"].cancel_type && (
+                                <Badge variant="outline" className="text-xs text-red-600 border-red-200 mb-1">{statusUpdateMap["cancelled"].cancel_type}</Badge>
+                              )}
+                              <span className="text-xs text-red-600 block">{statusUpdateMap["cancelled"].date}</span>
                               <p className="text-sm text-red-700 mt-1">{statusUpdateMap["cancelled"].description}</p>
                             </>
                           )}
@@ -181,7 +185,6 @@ const TrackingPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Unit Checks */}
               {unitChecks && (
                 <Card className="mb-6 border-border">
                   <CardHeader><CardTitle className="text-lg">Hasil Cek Unit</CardTitle></CardHeader>
@@ -197,7 +200,6 @@ const TrackingPage = () => {
                 </Card>
               )}
 
-              {/* Photos */}
               {photos.length > 0 && (
                 <Card className="mb-6 border-border">
                   <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Camera className="w-4 h-4" /> Foto Unit</CardTitle></CardHeader>
