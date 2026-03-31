@@ -13,6 +13,7 @@ import DashboardLayout from "./components/DashboardLayout";
 import DashboardHome from "./pages/DashboardHome";
 import OrdersPage from "./pages/OrdersPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import CreateOrderPage from "./pages/CreateOrderPage";
 import TechniciansPage from "./pages/TechniciansPage";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<DashboardHome />} />
               <Route path="orders" element={<OrdersPage />} />
+              <Route path="orders/create" element={<CreateOrderPage />} />
               <Route path="orders/:orderId" element={<OrderDetailPage />} />
               <Route path="technicians" element={<TechniciansPage />} />
             </Route>

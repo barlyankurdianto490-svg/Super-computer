@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Phone, Copy, ExternalLink, FileText, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, Phone, Copy, ExternalLink, FileText, ChevronRight, Mail, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
 const statusFlow = [
-  { value: "received", label: "Serahkan Unit", color: "bg-blue-100 text-blue-800" },
+  { value: "received", label: "Diterima", color: "bg-blue-100 text-blue-800" },
   { value: "diagnosed", label: "Diagnosa", color: "bg-yellow-100 text-yellow-800" },
   { value: "waiting_confirmation", label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800" },
   { value: "pending", label: "Pending", color: "bg-orange-100 text-orange-800" },
@@ -24,9 +24,13 @@ const statusFlow = [
 ];
 
 const serviceTypeLabels: Record<string, string> = {
-  warranty: "Service Garansi",
-  personal: "Service Pribadi",
-  install_upgrade: "Install & Upgrade",
+  non_warranty: "Non Garansi",
+  warranty_store: "Garansi Toko",
+  warranty_partner: "Garansi Partner",
+};
+
+const checkLabels: Record<string, string> = {
+  speaker: "Speaker", camera: "Camera", touchpad: "Touchpad", keyboard: "Keyboard", wifi: "Wifi",
 };
 
 const OrderDetailPage = () => {
@@ -36,6 +40,7 @@ const OrderDetailPage = () => {
   const { toast } = useToast();
   const [order, setOrder] = useState<any>(null);
   const [updates, setUpdates] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [updateDesc, setUpdateDesc] = useState("");
   const [updating, setUpdating] = useState(false);
@@ -47,44 +52,35 @@ const OrderDetailPage = () => {
     const { data } = await supabase.from("service_orders").select("*").eq("id", orderId).single();
     if (data) setOrder(data);
 
-    const { data: upd } = await supabase
-      .from("service_updates")
-      .select("*")
-      .eq("order_id", orderId)
-      .order("created_at", { ascending: false });
+    const { data: upd } = await supabase.from("service_updates").select("*").eq("order_id", orderId).order("created_at", { ascending: false });
     if (upd) setUpdates(upd);
+
+    const { data: ph } = await supabase.from("service_photos").select("*").eq("order_id", orderId);
+    if (ph) setPhotos(ph);
+
     setLoading(false);
   };
 
-  useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+  useEffect(() => { fetchOrder(); }, [orderId]);
 
-  // Get the next status in the flow (skip cancelled)
   const getNextStatus = () => {
     if (!order) return null;
     const mainFlow = statusFlow.filter(s => s.value !== "cancelled" && s.value !== "closed");
-    const currentIndex = mainFlow.findIndex(s => s.value === order.status);
-    if (currentIndex === -1 || currentIndex >= mainFlow.length - 1) return null;
-    return mainFlow[currentIndex + 1];
+    const idx = mainFlow.findIndex(s => s.value === order.status);
+    if (idx === -1 || idx >= mainFlow.length - 1) return null;
+    return mainFlow[idx + 1];
   };
 
   const handleNextStatus = async () => {
     const next = getNextStatus();
-    if (!next || !order) return;
-    if (!updateDesc.trim()) {
-      toast({ title: "Keterangan wajib diisi", description: "Tuliskan keterangan sebelum lanjut ke tahap berikutnya.", variant: "destructive" });
+    if (!next || !order || !updateDesc.trim()) {
+      toast({ title: "Keterangan wajib diisi", variant: "destructive" });
       return;
     }
     setUpdating(true);
     try {
       await supabase.from("service_orders").update({ status: next.value, updated_at: new Date().toISOString() } as any).eq("id", order.id);
-      await supabase.from("service_updates").insert({
-        order_id: order.id,
-        status: next.value,
-        description: updateDesc,
-        updated_by: user?.id,
-      });
+      await supabase.from("service_updates").insert({ order_id: order.id, status: next.value, description: updateDesc, updated_by: user?.id });
       setUpdateDesc("");
       toast({ title: "Status Diperbarui", description: `→ ${next.label}` });
       fetchOrder();
@@ -95,19 +91,11 @@ const OrderDetailPage = () => {
   };
 
   const handleCancel = async () => {
-    if (!order || !updateDesc.trim()) {
-      toast({ title: "Keterangan wajib diisi", variant: "destructive" });
-      return;
-    }
+    if (!order || !updateDesc.trim()) { toast({ title: "Keterangan wajib diisi", variant: "destructive" }); return; }
     setUpdating(true);
     try {
       await supabase.from("service_orders").update({ status: "cancelled", updated_at: new Date().toISOString() } as any).eq("id", order.id);
-      await supabase.from("service_updates").insert({
-        order_id: order.id,
-        status: "cancelled",
-        description: updateDesc,
-        updated_by: user?.id,
-      });
+      await supabase.from("service_updates").insert({ order_id: order.id, status: "cancelled", description: updateDesc, updated_by: user?.id });
       setUpdateDesc("");
       toast({ title: "Pesanan Dibatalkan" });
       fetchOrder();
@@ -122,8 +110,7 @@ const OrderDetailPage = () => {
     try {
       await supabase.from("service_orders").update({ final_cost: total, status: "closed", updated_at: new Date().toISOString() } as any).eq("id", order.id);
       await supabase.from("service_updates").insert({
-        order_id: order.id,
-        status: "closed",
+        order_id: order.id, status: "closed",
         description: `Invoice dibuat. Total: Rp ${total.toLocaleString("id-ID")}. Detail: ${invoiceItems.map(i => `${i.description}: Rp ${parseFloat(i.amount || "0").toLocaleString("id-ID")}`).join(", ")}`,
         updated_by: user?.id,
       });
@@ -154,10 +141,10 @@ const OrderDetailPage = () => {
 
   const currentStatus = statusFlow.find(s => s.value === order.status) || statusFlow[0];
   const isAdmin = userRole === "admin";
-  const isTechnician = userRole === "technician";
-  const canUpdate = isAdmin || isTechnician;
+  const canUpdate = isAdmin || userRole === "technician";
   const nextStatus = getNextStatus();
   const isFinal = ["closed", "cancelled"].includes(order.status);
+  const unitChecks = order.unit_checks as Record<string, boolean> | null;
 
   return (
     <div>
@@ -165,7 +152,6 @@ const OrderDetailPage = () => {
         <ArrowLeft className="w-4 h-4 mr-1" /> Kembali
       </Button>
 
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-mono">{order.ticket_number}</h1>
@@ -186,70 +172,88 @@ const OrderDetailPage = () => {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Customer & Device Info */}
-        <Card className="border-border">
-          <CardHeader><CardTitle className="text-base">Info Pelanggan & Unit</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Pelanggan</span><span className="font-medium">{order.customer_name}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Telepon</span><span className="font-medium flex items-center gap-1"><Phone className="w-3 h-3" />{order.customer_phone}</span></div>
-            <Separator />
-            <div className="flex justify-between"><span className="text-muted-foreground">Perangkat</span><span className="font-medium">{order.device_type}</span></div>
-            {order.device_brand && <div className="flex justify-between"><span className="text-muted-foreground">Merek</span><span className="font-medium">{order.device_brand}</span></div>}
-            {order.device_model && <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="font-medium">{order.device_model}</span></div>}
-            <Separator />
-            <div className="flex justify-between"><span className="text-muted-foreground">Kerusakan</span><span className="font-medium text-right max-w-[60%]">{order.damage_description}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Tipe Servis</span><span className="font-medium">{serviceTypeLabels[order.service_type] || order.service_type}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Est. Biaya</span><span className="font-medium">Rp {(order.estimated_cost || 0).toLocaleString("id-ID")}</span></div>
-            {order.final_cost > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Biaya Akhir</span><span className="font-bold text-foreground">Rp {order.final_cost.toLocaleString("id-ID")}</span></div>}
-            <div className="flex justify-between"><span className="text-muted-foreground">Tanggal</span><span className="font-medium">{new Date(order.created_at).toLocaleDateString("id-ID")}</span></div>
-            {order.notes && <><Separator /><p className="text-muted-foreground text-xs">{order.notes}</p></>}
-          </CardContent>
-        </Card>
-
-        {/* Status Update & Timeline */}
+        {/* Info */}
         <div className="space-y-4">
-          {canUpdate && !isFinal && (
+          <Card className="border-border">
+            <CardHeader><CardTitle className="text-base">Info Pelanggan & Unit</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Pelanggan</span><span className="font-medium">{order.customer_name}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Telepon</span><span className="font-medium flex items-center gap-1"><Phone className="w-3 h-3" />{order.customer_phone}</span></div>
+              {order.customer_email && <div className="flex justify-between"><span className="text-muted-foreground">Email</span><span className="font-medium flex items-center gap-1"><Mail className="w-3 h-3" />{order.customer_email}</span></div>}
+              <Separator />
+              <div className="flex justify-between"><span className="text-muted-foreground">Perangkat</span><span className="font-medium">{order.device_type}</span></div>
+              {order.device_brand && <div className="flex justify-between"><span className="text-muted-foreground">Merk</span><span className="font-medium">{order.device_brand}</span></div>}
+              {order.device_model && <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="font-medium">{order.device_model}</span></div>}
+              {order.device_password && <div className="flex justify-between"><span className="text-muted-foreground">Password</span><span className="font-medium font-mono">••••••</span></div>}
+              <Separator />
+              {order.unit_condition && <div className="flex justify-between"><span className="text-muted-foreground">Kondisi</span><span className="font-medium">{order.unit_condition}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Kerusakan</span><span className="font-medium text-right max-w-[60%]">{order.damage_description}</span></div>
+              {order.unit_accessories && <div className="flex justify-between"><span className="text-muted-foreground">Kelengkapan</span><span className="font-medium">{order.unit_accessories}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Tipe Servis</span><span className="font-medium">{serviceTypeLabels[order.service_type] || order.service_type}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Est. Biaya</span><span className="font-medium">Rp {(order.estimated_cost || 0).toLocaleString("id-ID")}</span></div>
+              {order.final_cost > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Biaya Akhir</span><span className="font-bold text-foreground">Rp {order.final_cost.toLocaleString("id-ID")}</span></div>}
+              <div className="flex justify-between"><span className="text-muted-foreground">Tanggal</span><span className="font-medium">{new Date(order.created_at).toLocaleDateString("id-ID")}</span></div>
+              {order.notes && <><Separator /><p className="text-muted-foreground text-xs">{order.notes}</p></>}
+            </CardContent>
+          </Card>
+
+          {/* Unit Checks */}
+          {unitChecks && (
             <Card className="border-border">
-              <CardHeader>
-                <CardTitle className="text-base">Update Status</CardTitle>
-                {nextStatus && (
-                  <p className="text-xs text-muted-foreground">
-                    Tahap berikutnya: <span className="font-semibold text-foreground">{nextStatus.label}</span>
-                  </p>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Textarea
-                  placeholder="Tulis keterangan update (wajib)..."
-                  value={updateDesc}
-                  onChange={e => setUpdateDesc(e.target.value)}
-                  className="text-sm"
-                />
-                <div className="flex gap-2">
-                  {nextStatus && (
-                    <Button
-                      onClick={handleNextStatus}
-                      disabled={updating}
-                      className="flex-1"
-                    >
-                      {updating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
-                      Next → {nextStatus.label}
-                    </Button>
-                  )}
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleCancel}
-                    disabled={updating}
-                  >
-                    Cancel
-                  </Button>
+              <CardHeader><CardTitle className="text-base">Cek Unit</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(unitChecks).map(([key, val]) => (
+                    <Badge key={key} variant="outline" className={`text-xs ${val ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                      {checkLabels[key] || key}: {val ? "OK" : "NG"}
+                    </Badge>
+                  ))}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Timeline */}
+          {/* Photos */}
+          {photos.length > 0 && (
+            <Card className="border-border">
+              <CardHeader><CardTitle className="text-base flex items-center gap-2"><Camera className="w-4 h-4" /> Foto Unit</CardTitle></CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-2">
+                  {photos.map((p: any) => (
+                    <div key={p.id} className="text-center">
+                      <img src={p.photo_url} alt={p.label} className="w-full h-24 object-cover rounded border border-border" />
+                      <p className="text-xs text-muted-foreground mt-1 capitalize">{p.label}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Status & Timeline */}
+        <div className="space-y-4">
+          {canUpdate && !isFinal && (
+            <Card className="border-border">
+              <CardHeader>
+                <CardTitle className="text-base">Update Status</CardTitle>
+                {nextStatus && <p className="text-xs text-muted-foreground">Tahap berikutnya: <span className="font-semibold text-foreground">{nextStatus.label}</span></p>}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Textarea placeholder="Tulis keterangan update (wajib)..." value={updateDesc} onChange={e => setUpdateDesc(e.target.value)} className="text-sm" />
+                <div className="flex gap-2">
+                  {nextStatus && (
+                    <Button onClick={handleNextStatus} disabled={updating} className="flex-1">
+                      {updating ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <ChevronRight className="w-4 h-4 mr-1" />}
+                      Next → {nextStatus.label}
+                    </Button>
+                  )}
+                  <Button variant="destructive" size="sm" onClick={handleCancel} disabled={updating}>Cancel</Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="border-border">
             <CardHeader><CardTitle className="text-base">Riwayat Update</CardTitle></CardHeader>
             <CardContent>
@@ -294,9 +298,7 @@ const OrderDetailPage = () => {
               <div key={i} className="flex gap-2">
                 <Input placeholder="Deskripsi" value={item.description} onChange={e => { const items = [...invoiceItems]; items[i].description = e.target.value; setInvoiceItems(items); }} className="flex-1" />
                 <Input type="number" placeholder="Rp" value={item.amount} onChange={e => { const items = [...invoiceItems]; items[i].amount = e.target.value; setInvoiceItems(items); }} className="w-32" />
-                {invoiceItems.length > 1 && (
-                  <Button variant="ghost" size="sm" onClick={() => setInvoiceItems(invoiceItems.filter((_, j) => j !== i))}>×</Button>
-                )}
+                {invoiceItems.length > 1 && <Button variant="ghost" size="sm" onClick={() => setInvoiceItems(invoiceItems.filter((_, j) => j !== i))}>×</Button>}
               </div>
             ))}
             <Button variant="outline" size="sm" onClick={() => setInvoiceItems([...invoiceItems, { description: "", amount: "" }])}>+ Tambah Item</Button>

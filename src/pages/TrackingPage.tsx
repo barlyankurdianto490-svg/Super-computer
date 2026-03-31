@@ -1,16 +1,17 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, CheckCircle2, Wrench, Package, AlertCircle, Phone, Mail, XCircle, PauseCircle, ShieldCheck, Settings } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle2, Wrench, Package, AlertCircle, Phone, Mail, XCircle, PauseCircle, ShieldCheck, Camera } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import logoIcon from "@/assets/logo-icon.png";
 
 type ServiceStatus = "received" | "diagnosed" | "waiting_confirmation" | "pending" | "in_progress" | "completed" | "cancelled" | "closed";
 
 const statusConfig: Record<ServiceStatus, { label: string; color: string; icon: typeof Clock }> = {
-  received: { label: "Serahkan Unit", color: "bg-blue-100 text-blue-800", icon: Package },
+  received: { label: "Diterima", color: "bg-blue-100 text-blue-800", icon: Package },
   diagnosed: { label: "Diagnosa", color: "bg-yellow-100 text-yellow-800", icon: AlertCircle },
   waiting_confirmation: { label: "Menunggu Konfirmasi", color: "bg-purple-100 text-purple-800", icon: PauseCircle },
   pending: { label: "Pending", color: "bg-orange-100 text-orange-800", icon: Clock },
@@ -23,15 +24,16 @@ const statusConfig: Record<ServiceStatus, { label: string; color: string; icon: 
 const statusOrder: ServiceStatus[] = ["received", "diagnosed", "waiting_confirmation", "pending", "in_progress", "completed", "closed"];
 
 const serviceTypeLabels: Record<string, string> = {
-  warranty: "Service Garansi",
-  personal: "Service Pribadi",
-  install_upgrade: "Install & Upgrade",
+  non_warranty: "Non Garansi",
+  warranty_store: "Garansi Toko",
+  warranty_partner: "Garansi Partner",
 };
 
 const TrackingPage = () => {
   const { ticketId } = useParams<{ ticketId: string }>();
   const [order, setOrder] = useState<any>(null);
   const [updates, setUpdates] = useState<any[]>([]);
+  const [photos, setPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,6 +43,8 @@ const TrackingPage = () => {
         setOrder(data);
         const { data: upd } = await supabase.from("service_updates").select("*").eq("order_id", data.id).order("created_at", { ascending: true });
         if (upd) setUpdates(upd);
+        const { data: ph } = await supabase.from("service_photos").select("*").eq("order_id", data.id);
+        if (ph) setPhotos(ph);
       }
       setLoading(false);
     };
@@ -52,18 +56,14 @@ const TrackingPage = () => {
   const isCancelled = order?.status === "cancelled";
   const currentStatusIndex = order ? (isCancelled ? -1 : statusOrder.indexOf(order.status as ServiceStatus)) : -1;
 
-  // Build a map of status -> update info (use the first update for each status)
   const statusUpdateMap: Record<string, { description: string; date: string }> = {};
-  if (updates.length > 0) {
-    updates.forEach(u => {
-      if (!statusUpdateMap[u.status]) {
-        statusUpdateMap[u.status] = {
-          description: u.description || "",
-          date: new Date(u.created_at).toLocaleString("id-ID"),
-        };
-      }
-    });
-  }
+  updates.forEach(u => {
+    if (!statusUpdateMap[u.status]) {
+      statusUpdateMap[u.status] = { description: u.description || "", date: new Date(u.created_at).toLocaleString("id-ID") };
+    }
+  });
+
+  const unitChecks = order?.unit_checks as Record<string, boolean> | null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,7 +74,7 @@ const TrackingPage = () => {
             <span className="text-sm">Kembali</span>
           </Link>
           <div className="flex items-center gap-2 ml-auto">
-            <Settings className="w-5 h-5 text-accent" />
+            <img src={logoIcon} alt="Duper Computer" className="w-6 h-6" />
             <span className="font-bold text-foreground">Duper Computer</span>
           </div>
         </div>
@@ -83,9 +83,7 @@ const TrackingPage = () => {
       <div className="container mx-auto px-4 py-8 max-w-2xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="text-2xl font-bold text-foreground mb-1">Status Servis</h1>
-          <p className="text-muted-foreground mb-6">
-            Tiket: <span className="font-mono font-semibold text-foreground">{ticketId}</span>
-          </p>
+          <p className="text-muted-foreground mb-6">Tiket: <span className="font-mono font-semibold text-foreground">{ticketId}</span></p>
 
           {!order ? (
             <Card className="border-border">
@@ -98,13 +96,11 @@ const TrackingPage = () => {
             </Card>
           ) : (
             <>
-              {/* Status Timeline with descriptions */}
               <Card className="mb-6 border-border">
                 <CardHeader><CardTitle className="text-lg">Progres Perbaikan</CardTitle></CardHeader>
                 <CardContent>
                   {isCancelled ? (
                     <div className="space-y-4">
-                      {/* Show completed steps before cancellation */}
                       {updates.filter(u => u.status !== "cancelled").map((u, i) => {
                         const st = statusConfig[u.status as ServiceStatus];
                         return (
@@ -144,16 +140,13 @@ const TrackingPage = () => {
                         const isCurrent = i === currentStatusIndex;
                         const updateInfo = statusUpdateMap[status];
                         const isLast = i === statusOrder.length - 1;
-
                         return (
                           <div key={status} className="flex gap-3">
                             <div className="flex flex-col items-center">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors ${isCurrent ? config.color : isActive ? "bg-green-100" : "bg-muted"}`}>
                                 <config.icon className={`w-4 h-4 ${isCurrent ? "" : isActive ? "text-green-600" : "text-muted-foreground"}`} />
                               </div>
-                              {!isLast && (
-                                <div className={`w-0.5 flex-1 min-h-[16px] my-1 ${isActive && !isCurrent ? "bg-green-200" : "bg-border"}`} />
-                              )}
+                              {!isLast && <div className={`w-0.5 flex-1 min-h-[16px] my-1 ${isActive && !isCurrent ? "bg-green-200" : "bg-border"}`} />}
                             </div>
                             <div className={`flex-1 ${!isLast ? "pb-4" : ""}`}>
                               <div className="flex items-center gap-2">
@@ -164,9 +157,7 @@ const TrackingPage = () => {
                               {isActive && updateInfo && (
                                 <div className="mt-1">
                                   <span className="text-xs text-muted-foreground">{updateInfo.date}</span>
-                                  {updateInfo.description && (
-                                    <p className="text-sm text-muted-foreground mt-0.5">{updateInfo.description}</p>
-                                  )}
+                                  {updateInfo.description && <p className="text-sm text-muted-foreground mt-0.5">{updateInfo.description}</p>}
                                 </div>
                               )}
                             </div>
@@ -178,17 +169,50 @@ const TrackingPage = () => {
                 </CardContent>
               </Card>
 
-              {/* Device Info */}
               <Card className="mb-6 border-border">
                 <CardHeader><CardTitle className="text-lg">Detail Unit</CardTitle></CardHeader>
                 <CardContent className="space-y-3 text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">Pelanggan</span><span className="font-medium">{order.customer_name}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Perangkat</span><span className="font-medium">{order.device_type} {order.device_brand && `• ${order.device_brand}`} {order.device_model && `• ${order.device_model}`}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">Tipe Servis</span><span className="font-medium">{serviceTypeLabels[order.service_type] || order.service_type}</span></div>
+                  {order.unit_condition && <div className="flex justify-between"><span className="text-muted-foreground">Kondisi</span><span className="font-medium">{order.unit_condition}</span></div>}
                   <div className="flex justify-between"><span className="text-muted-foreground">Tanggal Masuk</span><span className="font-medium">{new Date(order.created_at).toLocaleDateString("id-ID")}</span></div>
                   {order.final_cost > 0 && <div className="flex justify-between"><span className="text-muted-foreground">Total Biaya</span><span className="font-bold">Rp {order.final_cost.toLocaleString("id-ID")}</span></div>}
                 </CardContent>
               </Card>
+
+              {/* Unit Checks */}
+              {unitChecks && (
+                <Card className="mb-6 border-border">
+                  <CardHeader><CardTitle className="text-lg">Hasil Cek Unit</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(unitChecks).map(([key, val]) => (
+                        <Badge key={key} variant="outline" className={`text-xs ${val ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                          {key.charAt(0).toUpperCase() + key.slice(1)}: {val ? "OK" : "NG"}
+                        </Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Photos */}
+              {photos.length > 0 && (
+                <Card className="mb-6 border-border">
+                  <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Camera className="w-4 h-4" /> Foto Unit</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2">
+                      {photos.map((p: any) => (
+                        <div key={p.id} className="text-center">
+                          <img src={p.photo_url} alt={p.label} className="w-full h-32 object-cover rounded border border-border" />
+                          <p className="text-xs text-muted-foreground mt-1 capitalize">{p.label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </>
           )}
 

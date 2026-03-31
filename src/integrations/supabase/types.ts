@@ -49,11 +49,13 @@ export type Database = {
           assigned_technician: string | null
           created_at: string
           created_by: string | null
+          customer_email: string | null
           customer_name: string
           customer_phone: string
           damage_description: string
           device_brand: string | null
           device_model: string | null
+          device_password: string | null
           device_type: string
           estimated_cost: number | null
           final_cost: number | null
@@ -62,17 +64,22 @@ export type Database = {
           service_type: string
           status: string
           ticket_number: string
+          unit_accessories: string | null
+          unit_checks: Json | null
+          unit_condition: string | null
           updated_at: string
         }
         Insert: {
           assigned_technician?: string | null
           created_at?: string
           created_by?: string | null
+          customer_email?: string | null
           customer_name: string
           customer_phone: string
           damage_description: string
           device_brand?: string | null
           device_model?: string | null
+          device_password?: string | null
           device_type: string
           estimated_cost?: number | null
           final_cost?: number | null
@@ -81,17 +88,22 @@ export type Database = {
           service_type?: string
           status?: string
           ticket_number: string
+          unit_accessories?: string | null
+          unit_checks?: Json | null
+          unit_condition?: string | null
           updated_at?: string
         }
         Update: {
           assigned_technician?: string | null
           created_at?: string
           created_by?: string | null
+          customer_email?: string | null
           customer_name?: string
           customer_phone?: string
           damage_description?: string
           device_brand?: string | null
           device_model?: string | null
+          device_password?: string | null
           device_type?: string
           estimated_cost?: number | null
           final_cost?: number | null
@@ -100,9 +112,44 @@ export type Database = {
           service_type?: string
           status?: string
           ticket_number?: string
+          unit_accessories?: string | null
+          unit_checks?: Json | null
+          unit_condition?: string | null
           updated_at?: string
         }
         Relationships: []
+      }
+      service_photos: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          order_id: string
+          photo_url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          order_id: string
+          photo_url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          order_id?: string
+          photo_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_photos_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "service_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_updates: {
         Row: {
