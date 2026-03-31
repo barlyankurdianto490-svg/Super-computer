@@ -3,18 +3,22 @@ import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { LayoutDashboard, ClipboardList, Users, LogOut, Menu, X, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import logoIcon from "@/assets/logo-icon.png";
-
-const navItems = [
-  { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-  { to: "/dashboard/orders", icon: ClipboardList, label: "Pesanan Servis" },
-  { to: "/dashboard/technicians", icon: Users, label: "Kelola Teknisi" },
-];
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { userRole } = useAuth();
+
+  const isOwner = userRole === "owner";
+
+  const navItems = [
+    { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard", visible: true },
+    { to: "/dashboard/orders", icon: ClipboardList, label: "Pesanan Servis", visible: true },
+    { to: "/dashboard/technicians", icon: Users, label: "Kelola User", visible: isOwner },
+  ].filter(item => item.visible);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -37,20 +41,18 @@ const DashboardLayout = () => {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-sidebar-border transform transition-transform lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="h-16 flex items-center gap-2 px-4 border-b border-sidebar-border">
-          <img src={logoIcon} alt="Duper Computer" className="w-8 h-8" />
-          <span className="font-bold text-sidebar-foreground">Duper Computer</span>
+          <img src={logoIcon} alt="Super Computer" className="w-8 h-8" />
+          <span className="font-bold text-sidebar-foreground">Super Computer</span>
           <Button variant="ghost" size="icon" className="ml-auto lg:hidden text-sidebar-foreground" onClick={() => setSidebarOpen(false)}>
             <X className="w-5 h-5" />
           </Button>
@@ -88,7 +90,6 @@ const DashboardLayout = () => {
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 flex flex-col min-h-screen">
         <header className="h-16 bg-card border-b border-border flex items-center px-4 gap-3">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
@@ -96,7 +97,7 @@ const DashboardLayout = () => {
           </Button>
           <div className="flex items-center gap-2 lg:hidden">
             <Wrench className="w-5 h-5 text-accent" />
-            <span className="font-bold text-foreground">Duper Computer</span>
+            <span className="font-bold text-foreground">Super Computer</span>
           </div>
         </header>
 

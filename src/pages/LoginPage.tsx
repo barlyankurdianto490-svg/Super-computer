@@ -24,7 +24,6 @@ const LoginPage = () => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      // Check if user is approved
       const { data: profile } = await supabase
         .from("profiles")
         .select("is_approved, requested_role")
@@ -35,7 +34,7 @@ const LoginPage = () => {
         await supabase.auth.signOut();
         toast({
           title: "Akun Belum Disetujui",
-          description: "Akun Anda masih menunggu persetujuan dari Admin.",
+          description: "Akun Anda masih menunggu persetujuan dari Owner.",
           variant: "destructive",
         });
         return;
@@ -64,7 +63,7 @@ const LoginPage = () => {
         <Card className="border-border shadow-elevated">
           <CardHeader className="text-center pb-4">
             <div className="flex justify-center mb-3">
-              <img src={logoIcon} alt="Duper Computer" className="w-12 h-12" />
+              <img src={logoIcon} alt="Super Computer" className="w-12 h-12" />
             </div>
             <CardTitle className="text-xl">Login Staff</CardTitle>
             <CardDescription>Masuk ke panel manajemen servis</CardDescription>
