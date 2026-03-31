@@ -57,6 +57,8 @@ export type Database = {
           device_model: string | null
           device_password: string | null
           device_type: string
+          edited_at: string | null
+          edited_by: string | null
           estimated_cost: number | null
           final_cost: number | null
           id: string
@@ -81,6 +83,8 @@ export type Database = {
           device_model?: string | null
           device_password?: string | null
           device_type: string
+          edited_at?: string | null
+          edited_by?: string | null
           estimated_cost?: number | null
           final_cost?: number | null
           id?: string
@@ -105,6 +109,8 @@ export type Database = {
           device_model?: string | null
           device_password?: string | null
           device_type?: string
+          edited_at?: string | null
+          edited_by?: string | null
           estimated_cost?: number | null
           final_cost?: number | null
           id?: string
@@ -153,6 +159,7 @@ export type Database = {
       }
       service_updates: {
         Row: {
+          cancel_type: string | null
           created_at: string
           description: string | null
           id: string
@@ -161,6 +168,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          cancel_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -169,6 +177,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          cancel_type?: string | null
           created_at?: string
           description?: string | null
           id?: string
