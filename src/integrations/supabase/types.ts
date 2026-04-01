@@ -242,6 +242,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_tickets: {
+        Args: { _technician_id: string; _ticket_ids: string[] }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
