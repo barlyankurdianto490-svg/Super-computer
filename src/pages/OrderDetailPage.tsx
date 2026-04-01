@@ -250,7 +250,7 @@ const OrderDetailPage = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Perangkat</span><span className="font-medium">{order.device_type}</span></div>
               {order.device_brand && <div className="flex justify-between"><span className="text-muted-foreground">Merk</span><span className="font-medium">{order.device_brand}</span></div>}
               {order.device_model && <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="font-medium">{order.device_model}</span></div>}
-              {order.device_password && <div className="flex justify-between"><span className="text-muted-foreground">Password</span><span className="font-medium font-mono">••••••</span></div>}
+              {order.device_password && <div className="flex justify-between"><span className="text-muted-foreground">Password/PIN</span><span className="font-medium font-mono">{order.device_password}</span></div>}
               <Separator />
               {order.unit_condition && <div className="flex justify-between"><span className="text-muted-foreground">Kondisi</span><span className="font-medium">{order.unit_condition}</span></div>}
               <div className="flex justify-between"><span className="text-muted-foreground">Keluhan</span><span className="font-medium text-right max-w-[60%]">{order.damage_description}</span></div>
