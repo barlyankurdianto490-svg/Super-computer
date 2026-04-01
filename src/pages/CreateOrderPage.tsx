@@ -436,7 +436,7 @@ const CreateOrderPage = () => {
               <div className="flex justify-between"><span className="text-muted-foreground">Jenis</span><span className="font-medium">{form.device_type}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Merk</span><span className="font-medium">{form.device_brand}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Model</span><span className="font-medium">{form.device_model}</span></div>
-              {form.device_password && <div className="flex justify-between"><span className="text-muted-foreground">Password</span><span className="font-medium">••••••</span></div>}
+              {form.device_password && <div className="flex justify-between"><span className="text-muted-foreground">Password/PIN</span><span className="font-medium font-mono">{form.device_password}</span></div>}
               <Separator />
               <div className="flex justify-between"><span className="text-muted-foreground">Kondisi</span><span className="font-medium">{form.unit_condition}</span></div>
               {form.damage_description && <div><span className="text-muted-foreground">Keluhan:</span><p className="mt-1 text-foreground">{form.damage_description}</p></div>}
