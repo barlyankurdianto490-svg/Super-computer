@@ -23,6 +23,12 @@ const statusFlow = [
   { value: "closed", label: "Close", color: "bg-muted text-muted-foreground" },
 ];
 
+// Legacy status mapping for old data
+const legacyStatusLabels: Record<string, string> = {
+  pending: "Menunggu",
+  diagnose: "Diagnosa",
+};
+
 const serviceTypeLabels: Record<string, string> = {
   non_warranty: "Non Garansi",
   warranty_store: "Garansi Toko",
