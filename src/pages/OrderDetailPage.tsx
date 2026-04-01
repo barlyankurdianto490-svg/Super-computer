@@ -23,6 +23,12 @@ const statusFlow = [
   { value: "closed", label: "Close", color: "bg-muted text-muted-foreground" },
 ];
 
+// Legacy status mapping for old data
+const legacyStatusLabels: Record<string, string> = {
+  pending: "Menunggu",
+  diagnose: "Diagnosa",
+};
+
 const serviceTypeLabels: Record<string, string> = {
   non_warranty: "Non Garansi",
   warranty_store: "Garansi Toko",
@@ -321,12 +327,13 @@ const OrderDetailPage = () => {
                 <div className="space-y-3">
                   {updates.map((u: any) => {
                     const st = statusFlow.find(s => s.value === u.status);
+                    const statusLabel = st?.label || legacyStatusLabels[u.status] || u.status;
                     return (
                       <div key={u.id} className="flex gap-3">
                         <div className="w-2 h-2 rounded-full bg-accent mt-2 shrink-0" />
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <Badge variant="outline" className="text-xs">{st?.label || u.status}</Badge>
+                            <Badge variant="outline" className="text-xs">{statusLabel}</Badge>
                             {u.cancel_type && <Badge variant="outline" className="text-xs text-red-600 border-red-200">{u.cancel_type}</Badge>}
                             <span className="text-xs text-muted-foreground">{new Date(u.created_at).toLocaleString("id-ID")}</span>
                           </div>
